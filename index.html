@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>แบบทดสอบ: แนะนำวิทยาการข้อมูลและวงจรชีวิตของข้อมูล</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<!-- SheetJS (XLSX) สำหรับสร้างไฟล์ Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#f4f6f3; --paper:#ffffff; --ink:#1d2a24; --muted:#5f6f67; --line:#dde3de;
+  --brand:#1f5f4a; --brand-2:#2f7d63; --brand-soft:#e3efe9; --accent:#c8862b;
+  --ok:#1e8a4c; --ok-bg:#e4f5ea; --bad:#c43c3c; --bad-bg:#fbe7e7; --warn:#d9a21b;
+  --shadow:0 1px 2px rgba(20,40,30,.06),0 4px 14px rgba(20,40,30,.06);
+  --radius:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Sarabun',system-ui,sans-serif;font-size:17px;line-height:1.6}
+/* ---------- Anti-copy ---------- */
+body{-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;-webkit-touch-callout:none}
+input{-webkit-user-select:text;user-select:text}
+img{pointer-events:none}
+
+/* ---------- Sticky bar ---------- */
+.topbar{position:sticky;top:0;z-index:50;background:var(--brand);color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+.topbar-inner{max-width:980px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.topbar .title{font-weight:700;font-size:16px;flex:1;min-width:180px;line-height:1.3}
+.topbar .title small{display:block;font-weight:400;opacity:.8;font-size:13px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:5px 11px;border-radius:999px;font-size:14px;white-space:nowrap}
+.timer{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;letter-spacing:.5px;padding:4px 14px;background:rgba(0,0,0,.18)}
+.timer.danger{background:var(--bad);border-color:#ff9c9c;animation:blink 1s steps(2,start) infinite}
+@keyframes blink{50%{opacity:.35}}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--warn);box-shadow:0 0 0 3px rgba(255,255,255,.15)}
+.dot.online{background:#3ddc84}.dot.offline{background:#ff5a5a}.dot.loading{background:#ffd23f;animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(.6)}}
+
+/* ---------- Layout ---------- */
+main{max-width:980px;margin:0 auto;padding:22px 16px 60px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;margin-bottom:18px}
+h1{font-size:26px;margin:0 0 4px;color:var(--brand);line-height:1.35}
+h2{font-size:20px;margin:0 0 12px;color:var(--brand)}
+.lead{color:var(--muted);margin:0}
+.meta-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.tag{background:var(--brand-soft);color:var(--brand);border-radius:8px;padding:3px 10px;font-size:14px;font-weight:500}
+
+/* ---------- Profile ---------- */
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+label.f{display:block;font-size:14px;font-weight:600;color:var(--muted);margin-bottom:5px}
+label.f .req{color:var(--bad)}
+input[type=text]{width:100%;font:inherit;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fbfcfb;outline:none;transition:border .15s}
+input[type=text]:focus{border-color:var(--brand-2);background:#fff}
+input.invalid{border-color:var(--bad);background:var(--bad-bg)}
+input[readonly]{background:#eef2ef;color:var(--muted)}
+.err{color:var(--bad);font-size:14px;margin-top:8px;min-height:1px}
+.rules{margin:14px 0 0;padding:12px 14px;background:#fff8ec;border:1px solid #f1dcb5;border-radius:10px;font-size:15px}
+.rules ul{margin:6px 0 0;padding-left:20px}
+
+/* ---------- Buttons ---------- */
+.btn{font:inherit;font-weight:600;font-size:15px;border:none;border-radius:10px;padding:10px 16px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:transform .05s,background .15s,opacity .15s;background:#e9eeea;color:var(--ink)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--brand);color:#fff}.btn.primary:hover:not(:disabled){background:var(--brand-2)}
+.btn.accent{background:var(--accent);color:#fff}
+.btn.excel{background:#1d6f42;color:#fff}
+.btn.danger{background:#fff;color:var(--bad);border:1.5px solid #efc3c3}
+.btn.ghost{background:transparent;border:1.5px solid var(--line)}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px}
+
+/* ---------- Filters ---------- */
+.filters{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:thin}
+.filter{flex:none;font:inherit;font-size:14px;font-weight:600;border:1.5px solid var(--line);background:#fff;color:var(--muted);padding:7px 14px;border-radius:999px;cursor:pointer}
+.filter.active{background:var(--brand);border-color:var(--brand);color:#fff}
+.filter .n{opacity:.7;font-weight:500;margin-left:4px}
+
+/* ---------- Questions ---------- */
+#quizArea.locked-pre{display:none}
+.q{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 22px;margin-bottom:14px;border-left:5px solid var(--line)}
+.q.hidden{display:none}
+.q.correct{border-left-color:var(--ok)}.q.wrong{border-left-color:var(--bad)}.q.unanswered{border-left-color:var(--warn)}
+.q-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.q-num{background:var(--brand);color:#fff;font-weight:700;border-radius:8px;min-width:34px;height:30px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;padding:0 8px}
+.q-cat{font-size:13px;color:var(--muted);background:#f0f3f1;padding:2px 10px;border-radius:6px}
+.q-verdict{margin-left:auto;font-weight:700;font-size:14px}
+.q-text{font-weight:600;font-size:17.5px;margin:0 0 12px}
+.opts{display:grid;gap:8px}
+.opt{display:flex;gap:12px;align-items:flex-start;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;cursor:pointer;background:#fff;transition:border .12s,background .12s}
+.opt:hover{border-color:var(--brand-2);background:#f7fbf9}
+.opt .mark{flex:none;width:28px;height:28px;border-radius:50%;border:1.5px solid #b9c5be;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:var(--muted);margin-top:1px}
+.opt.selected{border-color:var(--brand);background:var(--brand-soft)}
+.opt.selected .mark{background:var(--brand);border-color:var(--brand);color:#fff}
+.locked .opt{cursor:default}.locked .opt:hover{background:#fff;border-color:var(--line)}
+.opt.is-correct{border-color:var(--ok)!important;background:var(--ok-bg)!important}
+.opt.is-correct .mark{background:var(--ok);border-color:var(--ok);color:#fff}
+.opt.is-wrong{border-color:var(--bad)!important;background:var(--bad-bg)!important}
+.opt.is-wrong .mark{background:var(--bad);border-color:var(--bad);color:#fff}
+.explain{display:none;margin-top:12px;padding:12px 14px;background:#f3f7fb;border:1px solid #d6e2ee;border-radius:10px;font-size:15.5px}
+.explain.show{display:block}
+.explain b{color:#24507a}
+.q-tools{margin-top:10px;display:none}
+.submitted .q-tools{display:block}
+.linkbtn{font:inherit;font-size:14px;background:none;border:none;color:#24507a;cursor:pointer;padding:0;text-decoration:underline}
+
+/* ---------- Result ---------- */
+#resultCard{display:none}
+.score-wrap{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.ring{--p:0;width:130px;height:130px;border-radius:50%;background:conic-gradient(var(--c,var(--ok)) calc(var(--p)*1%),#e8ece9 0);display:flex;align-items:center;justify-content:center;flex:none}
+.ring>div{width:104px;height:104px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring b{font-size:28px;line-height:1}.ring span{font-size:13px;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;flex:1;min-width:240px}
+.stat{background:#f6f8f6;border-radius:10px;padding:10px 12px}
+.stat .k{font-size:13px;color:var(--muted)}.stat .v{font-weight:700;font-size:18px}
+.evaluation{margin-top:14px;padding:12px 14px;border-radius:10px;font-weight:600}
+
+/* ---------- History ---------- */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:15px;min-width:640px}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{background:#f0f4f1;font-weight:600;color:var(--muted);font-size:14px}
+tr:last-child td{border-bottom:none}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);text-align:center;padding:18px}
+.badge{font-size:13px;padding:2px 8px;border-radius:6px;font-weight:600}
+.badge.ok{background:var(--ok-bg);color:var(--ok)}.badge.wait{background:#fff4d6;color:#8a6500}
+.bar{height:8px;background:#e8ece9;border-radius:6px;overflow:hidden;min-width:70px}.bar i{display:block;height:100%;background:var(--brand-2)}
+.hist-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.hist-head h2{margin:0}
+
+/* ---------- Modal & toast ---------- */
+.modal-bg{position:fixed;inset:0;background:rgba(15,25,20,.55);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:16px;max-width:440px;width:100%;padding:24px;box-shadow:0 20px 50px rgba(0,0,0,.3);text-align:center}
+.modal .ico{font-size:44px;line-height:1}
+.modal h3{margin:8px 0 6px;font-size:21px}
+.modal p{margin:0 0 18px;color:var(--muted)}
+.modal .toolbar{justify-content:center}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(120px);background:#1d2a24;color:#fff;padding:10px 18px;border-radius:10px;z-index:120;transition:transform .25s;font-size:15px;max-width:calc(100% - 32px)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+.print-only{display:none}
+
+@media (max-width:700px){
+  .grid3{grid-template-columns:1fr}
+  .topbar .title{font-size:14px}
+  .timer{font-size:17px}
+  h1{font-size:22px}
+  .q{padding:16px}
+}
+
+/* ---------- Print ---------- */
+@media print{
+  @page{size:A4;margin:14mm 14mm 16mm}
+  html,body{background:#fff;font-size:12.5pt}
+  .topbar,.toolbar,.filters,.no-print,.modal-bg,.toast,#profileCard,#historyCard,.q-tools,.q-verdict{display:none!important}
+  main{padding:0;max-width:none}
+  .card,.q{box-shadow:none;border:1px solid #bbb;break-inside:avoid;page-break-inside:avoid}
+  .q{border-left:1px solid #bbb;padding:10px 14px;margin-bottom:8px}
+  .q.hidden{display:block!important}
+  #quizArea{display:block!important}
+  .opt{padding:4px 8px;border:none;background:none!important}
+  .opt .mark{width:22px;height:22px;font-size:12px}
+  .opt.selected{background:none}
+  .q-text{font-size:12.5pt;margin-bottom:4px}
+  .opts{gap:2px}
+  .print-only{display:block}
+  .print-head{border:1px solid #bbb;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;font-size:12pt}
+  #resultCard{break-inside:avoid}
+  a{color:inherit;text-decoration:none}
+}
+</style>
+</head>
+<body oncopy="return false;" oncut="return false;" oncontextmenu="return false;" ondragstart="return false;">
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="title">แบบทดสอบวิทยาการข้อมูล<small>แนะนำวิทยาการข้อมูลและวงจรชีวิตของข้อมูล</small></div>
+    <span class="chip timer" id="timer" title="เวลาที่เหลือ">15:00</span>
+    <span class="chip" id="progressChip">ตอบแล้ว 0/20</span>
+    <span class="chip" id="tabChip" title="จำนวนครั้งที่สลับหน้าจอ">🔀 0/2</span>
+    <span class="chip" id="connChip" title="สถานะการเชื่อมต่อ Google Sheet"><span class="dot loading" id="connDot"></span><span id="connText">กำลังเชื่อมต่อ…</span></span>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <h1>แบบทดสอบ: แนะนำวิทยาการข้อมูลและวงจรชีวิตของข้อมูล</h1>
+    <p class="lead">รายวิชาวิทยาการข้อมูลและการวิเคราะห์ข้อมูล · ระดับพื้นฐาน</p>
+    <div class="meta-row">
+      <span class="tag">20 ข้อ · ข้อละ 1 คะแนน</span>
+      <span class="tag">เวลา 15 นาที</span>
+      <span class="tag">ปรนัย 4 ตัวเลือก</span>
+    </div>
+  </section>
+
+  <!-- ข้อมูลผู้สอบ (เฉพาะงานพิมพ์) -->
+  <div class="print-only print-head">
+    <div>ชื่อ-นามสกุล ........................................................</div>
+    <div>รหัสนักศึกษา ...........................</div>
+    <div>คะแนน ........ / 20</div>
+  </div>
+
+  <!-- Student Profile -->
+  <section class="card" id="profileCard">
+    <h2>👤 ข้อมูลนักศึกษา</h2>
+    <div class="grid3">
+      <div><label class="f" for="sid">รหัสนักศึกษา <span class="req">*</span></label><input type="text" id="sid" inputmode="numeric" autocomplete="off" maxlength="20" placeholder="เช่น 66101010001"></div>
+      <div><label class="f" for="fname">ชื่อ <span class="req">*</span></label><input type="text" id="fname" autocomplete="off" maxlength="60" placeholder="ชื่อจริง"></div>
+      <div><label class="f" for="lname">นามสกุล <span class="req">*</span></label><input type="text" id="lname" autocomplete="off" maxlength="60" placeholder="นามสกุล"></div>
+    </div>
+    <div class="err" id="profileErr"></div>
+    <div class="rules">
+      <b>ข้อปฏิบัติในการสอบ</b>
+      <ul>
+        <li>ระบบจะเริ่มนับเวลา 15 นาทีทันทีเมื่อกด “เริ่มทำแบบทดสอบ” และส่งคำตอบอัตโนมัติเมื่อหมดเวลา</li>
+        <li>ห้ามสลับแท็บหรือย่อหน้าจอ หากสลับ<b>เกิน 2 ครั้ง</b> ระบบจะส่งและตรวจข้อสอบทันที</li>
+        <li>ไม่สามารถคัดลอกข้อความ คลิกขวา หรือเปิดเครื่องมือตรวจโค้ดได้ระหว่างทำแบบทดสอบ</li>
+      </ul>
+    </div>
+    <div class="toolbar" style="margin-top:16px">
+      <button class="btn primary" id="startBtn">▶️ เริ่มทำแบบทดสอบ</button>
+      <button class="btn ghost" id="printBtnTop">🖨️ พิมพ์แบบทดสอบ</button>
+    </div>
+  </section>
+
+  <!-- Quiz -->
+  <section id="quizArea" class="locked-pre">
+    <div class="filters" id="filters" role="tablist"></div>
+    <div id="questions"></div>
+
+    <section class="card no-print" style="position:sticky;bottom:10px;z-index:20">
+      <div class="toolbar">
+        <button class="btn primary" id="gradeBtn">✅ ตรวจคำตอบ (Grade Quiz)</button>
+        <button class="btn accent" id="explainBtn" disabled>📖 แสดง/ซ่อน เฉลยรายละเอียด</button>
+        <button class="btn ghost" id="printBtn">🖨️ พิมพ์แบบทดสอบ</button>
+        <button class="btn ghost" id="retryBtn" style="display:none">🔁 ทำแบบทดสอบอีกครั้ง</button>
+      </div>
+    </section>
+  </section>
+
+  <!-- Result -->
+  <section class="card" id="resultCard">
+    <h2>📋 สรุปผลการทดสอบ</h2>
+    <div class="score-wrap">
+      <div class="ring" id="ring"><div><b id="rScore">0/20</b><span id="rPct">0%</span></div></div>
+      <div class="stats">
+        <div class="stat"><div class="k">ผู้สอบ</div><div class="v" id="rName">-</div></div>
+        <div class="stat"><div class="k">รอบที่</div><div class="v" id="rRound">-</div></div>
+        <div class="stat"><div class="k">เวลาที่ใช้</div><div class="v" id="rTime">-</div></div>
+        <div class="stat"><div class="k">ตอบถูก / ผิด / ไม่ตอบ</div><div class="v" id="rBreak">-</div></div>
+      </div>
+    </div>
+    <div class="evaluation" id="rEval"></div>
+    <div class="err" id="rNote" style="color:var(--muted)"></div>
+  </section>
+
+  <!-- History -->
+  <section class="card" id="historyCard">
+    <div class="hist-head">
+      <h2>📈 ประวัติการทำแบบทดสอบ</h2>
+      <div class="toolbar">
+        <button class="btn excel" id="excelBtn">📊 ดาวน์โหลดรายงาน Excel</button>
+        <button class="btn ghost" id="cloudBtn">☁️ ดึงประวัติจาก Google Sheet</button>
+        <button class="btn danger" id="clearBtn">🗑️ ล้างประวัติ</button>
+      </div>
+    </div>
+    <p class="lead" id="histCaption" style="margin-bottom:10px;font-size:15px">บันทึกไว้ในเครื่องนี้ (LocalStorage)</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>รอบ</th><th>วัน-เวลาที่ส่ง</th><th>เวลาที่ใช้</th><th>คะแนน</th><th>ร้อยละ</th><th>พัฒนาการ</th><th>หมายเหตุ</th><th>Google Sheet</th></tr></thead>
+        <tbody id="histBody"><tr><td colspan="8" class="empty">ยังไม่มีประวัติการทำแบบทดสอบ</td></tr></tbody>
+      </table>
+    </div>
+    <div id="cloudWrap" style="display:none;margin-top:18px">
+      <h2 style="font-size:17px">☁️ ประวัติจาก Google Sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>รอบ</th><th>วัน-เวลาที่ส่ง</th><th>เวลาที่ใช้</th><th>คะแนน</th><th>ร้อยละ</th><th>หมายเหตุ</th></tr></thead>
+          <tbody id="cloudBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="modal-bg" id="modalBg"><div class="modal" role="dialog" aria-modal="true">
+  <div class="ico" id="mIco">ℹ️</div><h3 id="mTitle"></h3><p id="mText"></p>
+  <div class="toolbar" id="mBtns"></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ================= CONFIG ================= */
+var API_URL = 'https://script.google.com/macros/s/AKfycbyzqj6LwWb6p-W2YMLSSCyi8Op4dvxj3fiviKKBia5k8wKe9A9moDnaBBRQaacDRv4Q/exec';
+var QUIZ_ID = 'DS-INTRO-LIFECYCLE';
+var QUIZ_TITLE = 'แนะนำวิทยาการข้อมูลและวงจรชีวิตของข้อมูล';
+var TIME_LIMIT = 15 * 60;       // วินาที
+var WARN_AT = 2 * 60;           // เตือนเมื่อเหลือน้อยกว่า 2 นาที
+var MAX_SWITCH = 2;             // สลับเกิน 2 ครั้ง = ส่งอัตโนมัติ
+var STORE_KEY = 'dsquiz_history_v1';
+var LETTERS = ['ก','ข','ค','ง'];
+var CATS = {
+  basic:{name:'แนวคิดพื้นฐาน'}, lifecycle:{name:'วงจรชีวิตของข้อมูล'},
+  prep:{name:'การเตรียมข้อมูล (Preprocessing)'}, sup:{name:'Supervised Learning'},
+  unsup:{name:'Unsupervised Learning'}, metric:{name:'การประเมินผลโมเดล (Metrics)'}
+};
+/* คลังข้อสอบ (เข้ารหัสไว้เพื่อไม่ให้อ่านเฉลยจาก Source Code ได้โดยตรง) */
+var BANK = JSON.parse(decodeURIComponent(escape(atob('W3siYyI6ImJhc2ljIiwicSI6IuC4guC5ieC4reC5g+C4lOC4reC4mOC4tOC4muC4suC4ouC4hOC4p+C4suC4oeC4q+C4oeC4suC4ouC4guC4reC4hyDigJzguKfguLTguJfguKLguLLguIHguLLguKPguILguYnguK3guKHguLnguKUgKERhdGEgU2NpZW5jZSnigJ0g4LmE4LiU4LmJ4LmA4Lir4Lih4Liy4Liw4Liq4Lih4LiX4Li14LmI4Liq4Li44LiUIiwibyI6WyLguIHguLLguKPguIjguLHguJTguYDguIHguYfguJrguILguYnguK3guKHguLnguKXguKXguIfguYPguJnguJDguLLguJnguILguYnguK3guKHguLnguKXguYPguKvguYnguYDguJvguYfguJnguKPguLDguYDguJrguLXguKLguJrguYDguJ7guLXguKLguIfguK3guKLguYjguLLguIfguYDguJTguLXguKLguKciLCLguKjguLLguKrguJXguKPguYzguJfguLXguYjguJzguKrguLLguJnguKrguJbguLTguJXguLQg4Lin4Li04LiX4Lii4Liy4LiB4Liy4Lij4LiE4Lit4Lih4Lie4Li04Lin4LmA4LiV4Lit4Lij4LmMIOC5geC4peC4sOC4hOC4p+C4suC4oeC4o+C4ueC5ieC5gOC4ieC4nuC4suC4sOC4lOC5ieC4suC4mSDguYDguJ7guLfguYjguK3guKrguIHguLHguJTguITguKfguLLguKHguKPguLnguYnguYHguKXguLDguILguYnguK3guKHguLnguKXguYDguIrguLTguIfguKXguLbguIHguIjguLLguIHguILguYnguK3guKHguLnguKUiLCLguIHguLLguKPguK3guK3guIHguYHguJrguJrguYHguKXguLDguJ7guLHguJLguJnguLLguYDguKfguYfguJrguYTguIvguJXguYzguYPguKvguYnguKrguKfguKLguIfguLLguKHguYHguKXguLDguYPguIrguYnguIfguLLguJnguIfguYjguLLguKIiLCLguIHguLLguKPguJTguLnguYHguKXguYHguKXguLDguIvguYjguK3guKHguJrguLPguKPguLjguIfguK3guLjguJvguIHguKPguJPguYzguK7guLLguKPguYzguJTguYHguKfguKPguYzguITguK3guKHguJ7guLTguKfguYDguJXguK3guKPguYwiXSwiYSI6MSwiZSI6IkRhdGEgU2NpZW5jZSDguYDguJvguYfguJnguKjguLLguKrguJXguKPguYzguYHguJrguJrguKrguKvguKfguLTguJfguKLguLLguIHguLLguKMg4LmD4LiK4LmJ4Liq4LiW4Li04LiV4Li0IOC4geC4suC4o+C5gOC4guC4teC4ouC4meC5guC4m+C4o+C5geC4geC4o+C4oSDguYHguKXguLDguITguKfguLLguKHguKPguLnguYnguYPguJnguYLguJTguYDguKHguJkg4LmA4Lie4Li34LmI4Lit4LmA4Lib4Lil4Li14LmI4Lii4LiZ4LiC4LmJ4Lit4Lih4Li54Lil4LiU4Li04Lia4LmD4Lir4LmJ4LmA4Lib4LmH4LiZ4LiE4Lin4Liy4Lih4Lij4Li54LmJIChJbnNpZ2h0KSDguJfguLXguYjguIrguYjguKfguKLguJXguLHguJTguKrguLTguJnguYPguIjguYTguJTguYkg4Liq4LmI4Lin4LiZ4LiV4Lix4Lin4LmA4Lil4Li34Lit4LiB4Lit4Li34LmI4LiZ4LmA4Lib4LmH4LiZ4LmA4Lie4Li14Lii4LiH4LiH4Liy4LiZ4LiU4LmJ4Liy4LiZ4LmA4LiX4LiE4LiZ4Li04LiE4LmA4LiJ4Lie4Liy4Liw4Liq4LmI4Lin4LiZ4LiL4Li24LmI4LiH4LmE4Lih4LmI4LiE4Lij4Lit4Lia4LiE4Lil4Li44Lih4LiE4Lin4Liy4Lih4Lir4Lih4Liy4LiiIn0seyJjIjoiYmFzaWMiLCJxIjoi4LiV4Liy4Lih4LmB4Lic4LiZ4Lig4Liy4Lie4LmA4Lin4LiZ4LiZ4LmM4LiC4Lit4LiHIERyZXcgQ29ud2F5IOC4l+C4seC4geC4qeC4sCAzIOC4lOC5ieC4suC4meC4l+C4teC5iOC4m+C4o+C4sOC4geC4reC4muC4geC4seC4meC5gOC4m+C5h+C4mSBEYXRhIFNjaWVuY2Ug4LiE4Li34Lit4LiC4LmJ4Lit4LmD4LiUIiwibyI6WyLguIHguLLguKPguJXguKXguLLguJQg4LiB4Liy4Lij4Lia4Lix4LiN4LiK4Li1IOC5geC4peC4sOC4geC4suC4o+C4muC4o+C4tOC4q+C4suC4o+C4iOC4seC4lOC4geC4suC4oyIsIuC4ruC4suC4o+C5jOC4lOC5geC4p+C4o+C5jCDguIvguK3guJ/guJXguYzguYHguKfguKPguYwg4LmB4Lil4Liw4LmA4LiE4Lij4Li34Lit4LiC4LmI4Liy4LiiIiwi4LiE4LiT4Li04LiV4Lio4Liy4Liq4LiV4Lij4LmML+C4quC4luC4tOC4leC4tCDguJfguLHguIHguKnguLDguIHguLLguKPguYDguILguLXguKLguJnguYLguJvguKPguYHguIHguKPguKEg4LmB4Lil4Liw4LiE4Lin4Liy4Lih4Lij4Li54LmJ4LmA4LiJ4Lie4Liy4Liw4LiU4LmJ4Liy4LiZIChEb21haW4gS25vd2xlZGdlKSIsIuC4geC4suC4o+C4reC4reC4geC5geC4muC4muC4geC4o+C4suC4n+C4tOC4gSDguIHguLLguKPguJbguYjguLLguKLguKDguLLguJ4g4LmB4Lil4Liw4LiB4Liy4Lij4LiV4Lix4LiU4LiV4LmI4Lit4Lin4Li04LiU4Li14LmC4LitIl0sImEiOjIsImUiOiJEcmV3IENvbndheSDguYDguKrguJnguK3guKfguYjguLIgRGF0YSBTY2llbmNlIOC5gOC4geC4tOC4lOC4iOC4suC4geC4iOC4uOC4lOC4leC4seC4lOC4guC4reC4hyAoMSkgTWF0aCAmIFN0YXRpc3RpY3MgKDIpIEhhY2tpbmcvUHJvZ3JhbW1pbmcgU2tpbGxzIOC5geC4peC4sCAoMykgU3Vic3RhbnRpdmUgRXhwZXJ0aXNlIOC4q+C4o+C4t+C4reC4hOC4p+C4suC4oeC4o+C4ueC5ieC5g+C4meC4quC4suC4guC4suC4meC4seC5ieC4mSDguYYg4Lir4Liy4LiB4LiC4Liy4LiU4LiU4LmJ4Liy4LiZ4LmD4LiU4LiU4LmJ4Liy4LiZ4Lir4LiZ4Li24LmI4LiHIOC4geC4suC4o+C4p+C4tOC5gOC4hOC4o+C4suC4sOC4q+C5jOC4iOC4sOC5hOC4oeC5iOC4quC4oeC4muC4ueC4o+C4k+C5jCJ9LHsiYyI6ImJhc2ljIiwicSI6IuC4guC5ieC4reC4oeC4ueC4peC5g+C4meC4guC5ieC4reC5g+C4lOC4iOC4seC4lOC5gOC4m+C5h+C4mSDigJzguILguYnguK3guKHguLnguKXguYTguKHguYjguKHguLXguYLguITguKPguIfguKrguKPguYnguLLguIcgKFVuc3RydWN0dXJlZCBEYXRhKeKAnSIsIm8iOlsi4LiV4Liy4Lij4Liy4LiH4Lij4Liy4Lii4LiK4Li34LmI4Lit4LiZ4Lix4LiB4Lio4Li24LiB4Lip4Liy4LmD4LiZ4LmE4Lif4Lil4LmMIEV4Y2VsIiwi4LiV4Liy4Lij4Liy4LiH4LiC4LmJ4Lit4Lih4Li54Lil4Liq4Li04LiZ4LiE4LmJ4Liy4LmD4LiZ4LiQ4Liy4LiZ4LiC4LmJ4Lit4Lih4Li54LilIFNRTCIsIuC5hOC4n+C4peC5jCBDU1Yg4Lia4Lix4LiZ4LiX4Li24LiB4Lii4Lit4LiU4LiC4Liy4Lii4Lij4Liy4Lii4Lin4Lix4LiZIiwi4LmE4Lif4Lil4LmM4Lij4Li54Lib4Lig4Liy4LieIOC4p+C4tOC4lOC4teC5guC4rSDguYHguKXguLDguILguYnguK3guITguKfguLLguKHguYLguJ7guKrguJXguYzguJrguJnguYLguIvguYDguIrguLXguKLguKXguKHguLXguYDguJTguLXguKIiXSwiYSI6MywiZSI6IuC4guC5ieC4reC4oeC4ueC4peC5hOC4oeC5iOC4oeC4teC5guC4hOC4o+C4h+C4quC4o+C5ieC4suC4h+C4hOC4t+C4reC4guC5ieC4reC4oeC4ueC4peC4l+C4teC5iOC5hOC4oeC5iOC5hOC4lOC5ieC4iOC4seC4lOC5gOC4m+C5h+C4meC5geC4luC4p+C5geC4peC4sOC4hOC4reC4peC4seC4oeC4meC5jOC4leC4suC4ouC4leC4seC4pyDguYDguIrguYjguJkg4Lij4Li54Lib4Lig4Liy4LieIOC5gOC4quC4teC4ouC4hyDguKfguLTguJTguLXguYLguK0g4LiC4LmJ4Lit4LiE4Lin4Liy4Lih4Lit4Li04Liq4Lij4LiwIOC4quC5iOC4p+C4mSBFeGNlbCwgU1FMIOC5geC4peC4sCBDU1Yg4LmA4Lib4LmH4LiZ4LiC4LmJ4Lit4Lih4Li54Lil4LmB4Lia4Lia4Lih4Li14LmC4LiE4Lij4LiH4Liq4Lij4LmJ4Liy4LiHIChTdHJ1Y3R1cmVkIERhdGEpIn0seyJjIjoiYmFzaWMiLCJxIjoi4LiC4LmJ4Lit4LmD4LiU4LmA4Lib4LmH4LiZIOKAnOC4quC4suC4o+C4quC4meC5gOC4l+C4qCAoSW5mb3JtYXRpb24p4oCdIOC4oeC4suC4geC4geC4p+C5iOC4suC4iOC4sOC5gOC4m+C5h+C4mSDigJzguILguYnguK3guKHguLnguKXguJTguLTguJogKFJhdyBEYXRhKeKAnSIsIm8iOlsi4oCc4Lii4Lit4LiU4LiC4Liy4Lii4LmA4LiJ4Lil4Li14LmI4Lii4LiC4Lit4LiH4Lij4LmJ4Liy4LiZ4LmD4LiZ4LmE4LiV4Lij4Lih4Liy4Liq4LiZ4Li14LmJ4LmA4Lie4Li04LmI4Lih4LiC4Li24LmJ4LiZ4Lij4LmJ4Lit4Lii4Lil4LiwIDE1IOC5gOC4oeC4t+C5iOC4reC5gOC4l+C4teC4ouC4muC4geC4seC4muC5hOC4leC4o+C4oeC4suC4quC4geC5iOC4reC4meKAnSIsIuC4leC4seC4p+C5gOC4peC4giAxMjAsIDEzNSwgOTgsIDE0MiIsIuC4o+C4q+C4seC4quC4quC4tOC4meC4hOC5ieC4siBBMDAxLCBBMDAyLCBBMDAzIiwi4Lin4Lix4LiZ4LiX4Li14LmIIDAxLzEwLzI1NjksIDAyLzEwLzI1NjkiXSwiYSI6MCwiZSI6IuC4guC5ieC4reC4oeC4ueC4peC4lOC4tOC4muC4hOC4t+C4reC4guC5ieC4reC5gOC4l+C5h+C4iOC4iOC4o+C4tOC4h+C4l+C4teC5iOC4ouC4seC4h+C5hOC4oeC5iOC4nOC5iOC4suC4meC4geC4suC4o+C4m+C4o+C4sOC4oeC4p+C4peC4nOC4pSAo4LiV4Lix4Lin4LmA4Lil4LiCIOC4o+C4q+C4seC4qiDguKfguLHguJnguJfguLXguYgpIOC4quC5iOC4p+C4meC4quC4suC4o+C4quC4meC5gOC4l+C4qOC4hOC4t+C4reC4guC5ieC4reC4oeC4ueC4peC4l+C4teC5iOC4nOC5iOC4suC4meC4geC4suC4o+C4m+C4o+C4sOC4oeC4p+C4peC4nOC4peC4iOC4meC4oeC4teC4hOC4p+C4suC4oeC4q+C4oeC4suC4ouC5geC4peC4sOC4meC4s+C5hOC4m+C5g+C4iuC5ieC4leC4seC4lOC4quC4tOC4meC5g+C4iOC5hOC4lOC5iSDguYDguIrguYjguJkg4LiB4Liy4Lij4Liq4Lij4Li44Lib4LmB4LiZ4Lin4LmC4LiZ4LmJ4Lih4Lii4Lit4LiU4LiC4Liy4Lii4LiX4Li14LmI4LmA4Lie4Li04LmI4Lih4LiC4Li24LmJ4LiZ4Lij4LmJ4Lit4Lii4Lil4LiwIDE1In0seyJjIjoibGlmZWN5Y2xlIiwicSI6IuC4leC4suC4oeC4geC4o+C4sOC4muC4p+C4meC4geC4suC4oyBDUklTUC1ETSDguILguLHguYnguJnguJXguK3guJnguYHguKPguIHguJfguLXguYjguITguKfguKPguJfguLPguIHguYjguK3guJnguYDguKPguLTguYjguKHguYLguITguKPguIfguIHguLLguKPguKfguLTguJfguKLguLLguIHguLLguKPguILguYnguK3guKHguLnguKXguITguLfguK3guILguYnguK3guYPguJQiLCJvIjpbIuC4quC4o+C5ieC4suC4h+C5guC4oeC5gOC4lOC4pSBNYWNoaW5lIExlYXJuaW5nIOC4l+C4seC4meC4l+C4tSIsIuC4l+C4s+C4hOC4p+C4suC4oeC5gOC4guC5ieC4suC5g+C4iOC4m+C4seC4jeC4q+C4suC5geC4peC4sOC5gOC4m+C5ieC4suC4q+C4oeC4suC4ouC4l+C4suC4h+C4mOC4uOC4o+C4geC4tOC4iCAoQnVzaW5lc3MgVW5kZXJzdGFuZGluZykiLCLguJnguLPguYLguKHguYDguJTguKXguYTguJvguYPguIrguYnguIfguLLguJnguIjguKPguLTguIcgKERlcGxveW1lbnQpIiwi4Lin4Lix4LiU4Lic4Lil4LiE4Lin4Liy4Lih4LmB4Lih4LmI4LiZ4Lii4Liz4LiC4Lit4LiH4LmC4Lih4LmA4LiU4LilIl0sImEiOjEsImUiOiJDUklTUC1ETSDguYDguKPguLTguYjguKHguIjguLLguIEgQnVzaW5lc3MgVW5kZXJzdGFuZGluZyDguYDguJ7guLfguYjguK3guIHguLPguKvguJnguJTguITguLPguJbguLLguKHguYHguKXguLDguYDguJvguYnguLLguKvguKHguLLguKLguYPguKvguYnguIrguLHguJTguYDguIjguJkg4LmB4Lil4LmJ4Lin4LiI4Li24LiH4LiV4LmI4Lit4LiU4LmJ4Lin4LiiIERhdGEgVW5kZXJzdGFuZGluZyDihpIgRGF0YSBQcmVwYXJhdGlvbiDihpIgTW9kZWxpbmcg4oaSIEV2YWx1YXRpb24g4oaSIERlcGxveW1lbnQg4Lir4Liy4LiB4LmE4Lih4LmI4Lij4Li54LmJ4Lin4LmI4Liy4LiI4Liw4LmB4LiB4LmJ4Lib4Lix4LiN4Lir4Liy4Lit4Liw4LmE4LijIOC4geC4suC4o+C4p+C4tOC5gOC4hOC4o+C4suC4sOC4q+C5jOC4geC5h+C4reC4suC4iOC5hOC4o+C5ieC4l+C4tOC4qOC4l+C4suC4hyJ9LHsiYyI6ImxpZmVjeWNsZSIsInEiOiLguILguYnguK3guYPguJTguYDguKPguLXguKLguIfguKXguLPguJTguLHguJrguKfguIfguIjguKPguIrguLXguKfguLTguJXguILguK3guIfguILguYnguK3guKHguLnguKUgKERhdGEgTGlmZSBDeWNsZSkg4LmE4LiU4LmJ4LiW4Li54LiB4LiV4LmJ4Lit4LiHIiwibyI6WyLguKfguLTguYDguITguKPguLLguLDguKvguYwg4oaSIOC5gOC4geC5h+C4muC4o+C4p+C4muC4o+C4p+C4oSDihpIg4LiI4Lix4LiU4LmA4LiB4LmH4LiaIOKGkiDguJfguLPguKXguLLguKIg4oaSIOC4meC4s+C5gOC4quC4meC4rSIsIuC4iOC4seC4lOC5gOC4geC5h+C4miDihpIg4LiZ4Liz4LmA4Liq4LiZ4LitIOKGkiDguYDguIHguYfguJrguKPguKfguJrguKPguKfguKEg4oaSIOC4p+C4tOC5gOC4hOC4o+C4suC4sOC4q+C5jCDihpIg4LiX4Liz4Lil4Liy4LiiIiwi4LmA4LiB4LmH4Lia4Lij4Lin4Lia4Lij4Lin4LihIOKGkiDguIjguLHguJTguYDguIHguYfguJog4oaSIOC4m+C4o+C4sOC4oeC4p+C4peC4nOC4pS/guJfguLPguITguKfguLLguKHguKrguLDguK3guLLguJQg4oaSIOC4p+C4tOC5gOC4hOC4o+C4suC4sOC4q+C5jCDihpIg4LiZ4Liz4LmA4Liq4LiZ4LitL+C5g+C4iuC5ieC4m+C4o+C4sOC5guC4ouC4iuC4meC5jCDihpIg4LmA4LiB4LmH4Lia4LiW4Liy4Lin4Lij4Lir4Lij4Li34Lit4LiX4Liz4Lil4Liy4LiiIiwi4LiZ4Liz4LmA4Liq4LiZ4LitIOKGkiDguKfguLTguYDguITguKPguLLguLDguKvguYwg4oaSIOC4m+C4o+C4sOC4oeC4p+C4peC4nOC4pSDihpIg4LiI4Lix4LiU4LmA4LiB4LmH4LiaIOKGkiDguYDguIHguYfguJrguKPguKfguJrguKPguKfguKEiXSwiYSI6MiwiZSI6IuC4p+C4h+C4iOC4o+C4iuC4teC4p+C4tOC4leC4guC4reC4h+C4guC5ieC4reC4oeC4ueC4peC5gOC4o+C4tOC5iOC4oeC4iOC4suC4geC4geC4suC4o+C5hOC4lOC5ieC4oeC4suC4i+C4tuC5iOC4h+C4guC5ieC4reC4oeC4ueC4pSAoQ29sbGVjdGlvbikg4LiI4Lix4LiU4LmA4LiB4LmH4LiaIChTdG9yYWdlKSDguYDguJXguKPguLXguKLguKEv4Lib4Lij4Liw4Lih4Lin4Lil4Lic4LilIChQcm9jZXNzaW5nKSDguKfguLTguYDguITguKPguLLguLDguKvguYwgKEFuYWx5c2lzKSDguJnguLPguYDguKrguJnguK3guYHguKXguLDguYPguIrguYnguJvguKPguLDguYLguKLguIrguJnguYwgKFZpc3VhbGl6YXRpb24vVXNlKSDguYHguKXguLDguKrguLjguJTguJfguYnguLLguKLguITguLfguK3guYDguIHguYfguJrguJbguLLguKfguKPguKvguKPguLfguK3guJfguLPguKXguLLguKIgKEFyY2hpdmUvRGVzdHJ1Y3Rpb24pIn0seyJjIjoibGlmZWN5Y2xlIiwicSI6IuC4p+C4seC4leC4luC4uOC4m+C4o+C4sOC4quC4h+C4hOC5jOC4q+C4peC4seC4geC4guC4reC4h+C4guC4seC5ieC4meC4leC4reC4mSDigJzguIHguLLguKPguJfguLPguKXguLLguKLguILguYnguK3guKHguLnguKUgKERhdGEgRGVzdHJ1Y3Rpb24p4oCdIOC5g+C4meC4p+C4h+C4iOC4o+C4iuC4teC4p+C4tOC4leC4guC4reC4h+C4guC5ieC4reC4oeC4ueC4peC4hOC4t+C4reC4guC5ieC4reC5g+C4lCIsIm8iOlsi4LmA4Lie4Li34LmI4Lit4Lil4LiU4LiC4LiZ4Liy4LiU4LmE4Lif4Lil4LmM4LmD4Lir4LmJ4LmA4Lib4Li04LiU4LmE4LiU4LmJ4LmA4Lij4LmH4Lin4LiC4Li24LmJ4LiZIiwi4LmA4Lie4Li34LmI4Lit4LmD4Lir4LmJ4Lic4Li54LmJ4Lit4Li34LmI4LiZ4LiZ4Liz4LiC4LmJ4Lit4Lih4Li54Lil4LmE4Lib4LmD4LiK4LmJ4LiV4LmI4Lit4LmE4LiU4LmJ4LiH4LmI4Liy4LiiIiwi4LmA4Lie4Li34LmI4Lit4Liq4Liz4Lij4Lit4LiH4LiC4LmJ4Lit4Lih4Li54Lil4LmE4Lin4LmJ4Lir4Lil4Liy4Lii4LiK4Li44LiUIiwi4LmA4Lie4Li34LmI4Lit4Lil4Lia4LiC4LmJ4Lit4Lih4Li54Lil4LiX4Li14LmI4Lir4Lih4LiU4LiE4Lin4Liy4Lih4LiI4Liz4LmA4Lib4LmH4LiZ4Lit4Lii4LmI4Liy4LiH4Lib4Lil4Lit4LiU4Lig4Lix4LiiIOC4leC4suC4oeC4meC5guC4ouC4muC4suC4ouC5geC4peC4sOC4geC4juC4q+C4oeC4suC4oiDguYDguIrguYjguJkg4LieLuC4oy7guJou4LiE4Li44LmJ4Lih4LiE4Lij4Lit4LiH4LiC4LmJ4Lit4Lih4Li54Lil4Liq4LmI4Lin4LiZ4Lia4Li44LiE4LiE4LilIChQRFBBKSJdLCJhIjozLCJlIjoi4LmA4Lih4Li34LmI4Lit4LiC4LmJ4Lit4Lih4Li54Lil4Lir4Lih4LiU4Lit4Liy4Lii4Li44LiB4Liy4Lij4LmD4LiK4LmJ4LiH4Liy4LiZIOC4leC5ieC4reC4h+C4l+C4s+C4peC4suC4ouC4reC4ouC5iOC4suC4h+C4m+C4peC4reC4lOC4oOC4seC4ouC5hOC4oeC5iOC5g+C4q+C5ieC4geC4ueC5ieC4hOC4t+C4meC5hOC4lOC5iSDguYDguJ7guLfguYjguK3guJvguIHguJvguYnguK3guIfguITguKfguLLguKHguYDguJvguYfguJnguKrguYjguKfguJnguJXguLHguKfguYHguKXguLDguJvguI/guLTguJrguLHguJXguLTguJXguLLguKHguIHguI7guKvguKHguLLguKIg4LmA4LiK4LmI4LiZIFBEUEEg4LiX4Li14LmI4LiB4Liz4Lir4LiZ4LiU4LmD4Lir4LmJ4Lil4Lia4LiC4LmJ4Lit4Lih4Li54Lil4Liq4LmI4Lin4LiZ4Lia4Li44LiE4LiE4Lil4LmA4Lih4Li34LmI4Lit4Lie4LmJ4LiZ4Lin4Lix4LiV4LiW4Li44Lib4Lij4Liw4Liq4LiH4LiE4LmM4LiB4Liy4Lij4LmA4LiB4LmH4LiaIn0seyJjIjoibGlmZWN5Y2xlIiwicSI6IkNSSVNQLURNIOC5gOC4m+C5h+C4meC4leC4seC4p+C4ouC5iOC4reC4guC4reC4h+C4guC5ieC4reC5g+C4lCIsIm8iOlsiQ3Jvc3MtSW5kdXN0cnkgU3RhbmRhcmQgUHJvY2VzcyBmb3IgRGF0YSBNaW5pbmciLCJDcml0aWNhbCBSZXNlYXJjaCBJbiBTdGF0aXN0aWNhbCBQcm9jZXNzaW5nIOKAkyBEYXRhIE1vZGVsIiwiQ29tcHV0ZXIgUmVzb3VyY2UgSW50ZWdyYXRpb24gU3lzdGVtIGZvciBEYXRhIE1hbmFnZW1lbnQiLCJDZW50cmFsIFJlcG9zaXRvcnkgZm9yIEluZm9ybWF0aW9uIFN0b3JhZ2Ug4oCTIERhdGEgTWFydCJdLCJhIjowLCJlIjoiQ1JJU1AtRE0gPSBDcm9zcy1JbmR1c3RyeSBTdGFuZGFyZCBQcm9jZXNzIGZvciBEYXRhIE1pbmluZyDguYDguJvguYfguJnguIHguKPguK3guJrguIHguKPguLDguJrguKfguJnguIHguLLguKPguKHguLLguJXguKPguJDguLLguJnguJfguLXguYjguYPguIrguYnguYTguJTguYnguIHguLHguJrguJfguLjguIHguK3guLjguJXguKrguLLguKvguIHguKPguKPguKEg4Lih4Li1IDYg4LiC4Lix4LmJ4LiZ4LiV4Lit4LiZ4LmB4Lil4Liw4Liq4Liy4Lih4Liy4Lij4LiW4Lin4LiZ4LiB4Lil4Lix4Lia4LmE4Lib4Lib4Lij4Lix4Lia4Lib4Lij4Li44LiH4LmE4LiU4LmJIChJdGVyYXRpdmUpIn0seyJjIjoibGlmZWN5Y2xlIiwicSI6IuC4geC4suC4o+C4p+C4tOC5gOC4hOC4o+C4suC4sOC4q+C5jOC4guC5ieC4reC4oeC4ueC4peC5gOC4iuC4tOC4h+C4quC4s+C4o+C4p+C4iCAoRXhwbG9yYXRvcnkgRGF0YSBBbmFseXNpczogRURBKSDguKHguLXguIjguLjguJTguJvguKPguLDguKrguIfguITguYzguKvguKXguLHguIHguYDguJ7guLfguYjguK3guK3guLDguYTguKMiLCJvIjpbIuC4meC4s+C5guC4oeC5gOC4lOC4peC4l+C4teC5iOC4quC4o+C5ieC4suC4h+C5gOC4quC4o+C5h+C4iOC5geC4peC5ieC4p+C5hOC4m+C4leC4tOC4lOC4leC4seC5ieC4h+C4muC4meC5gOC4i+C4tOC4o+C5jOC4n+C5gOC4p+C4reC4o+C5jCIsIuC4quC4s+C4o+C4p+C4iOC4peC4seC4geC4qeC4k+C4sCDguIHguLLguKPguIHguKPguLDguIjguLLguKIg4LiE4Lin4Liy4Lih4Liq4Lix4Lih4Lie4Lix4LiZ4LiY4LmMIOC5geC4peC4sOC4hOC5iOC4suC4nOC4tOC4lOC4m+C4geC4leC4tOC4guC4reC4h+C4guC5ieC4reC4oeC4ueC4peC4geC5iOC4reC4meC4quC4o+C5ieC4suC4h+C5guC4oeC5gOC4lOC4pSIsIuC4peC4muC4guC5ieC4reC4oeC4ueC4peC5gOC4geC5iOC4suC4l+C4teC5iOC5hOC4oeC5iOC5g+C4iuC5ieC5geC4peC5ieC4p+C4reC4reC4geC4iOC4suC4geC4o+C4sOC4muC4miIsIuC5gOC4guC4teC4ouC4meC4o+C4suC4ouC4h+C4suC4meC4quC4o+C4uOC4m+C4nOC4peC4guC4seC5ieC4meC4quC4uOC4lOC4l+C5ieC4suC4ouC5g+C4q+C5ieC4nOC4ueC5ieC4muC4o+C4tOC4q+C4suC4oyJdLCJhIjoxLCJlIjoiRURBIOC5g+C4iuC5ieC4quC4luC4tOC4leC4tOC5gOC4iuC4tOC4h+C4nuC4o+C4o+C4k+C4meC4suC5geC4peC4sOC4geC4o+C4suC4nyAo4LmA4LiK4LmI4LiZIEhpc3RvZ3JhbSwgQm94IHBsb3QsIFNjYXR0ZXIgcGxvdCkg4LmA4Lie4Li34LmI4Lit4LiX4Liz4LiE4Lin4Liy4Lih4LmA4LiC4LmJ4Liy4LmD4LiI4LiC4LmJ4Lit4Lih4Li54LilIOC4hOC5ieC4meC4q+C4suC4o+C4ueC4m+C5geC4muC4miDguITguYjguLLguJfguLXguYjguKvguLLguKLguYTguJsg4LmB4Lil4Liw4LiE4LmI4Liy4Lic4Li04LiU4Lib4LiB4LiV4Li0IOC4i+C4tuC5iOC4h+C4iuC5iOC4p+C4ouC4geC4s+C4q+C4meC4lOC4p+C4tOC4mOC4teC5gOC4leC4o+C4teC4ouC4oeC4guC5ieC4reC4oeC4ueC4peC5geC4peC4sOC5gOC4peC4t+C4reC4geC5guC4oeC5gOC4lOC4peC5hOC4lOC5ieC5gOC4q+C4oeC4suC4sOC4quC4oSJ9LHsiYyI6InByZXAiLCJxIjoi4Lir4Liy4LiB4Lie4Lia4Lin4LmI4Liy4LiE4Lit4Lil4Lix4Lih4LiZ4LmMIOKAnOC4reC4suC4ouC4uOKAnSDguKHguLXguITguYjguLLguKfguYjguLLguIcgKE1pc3NpbmcgVmFsdWVzKSDguK3guKLguLnguYjguJrguLLguIfguYHguJbguKcg4Lin4Li04LiY4Li14LiI4Lix4LiU4LiB4Liy4Lij4LiX4Li14LmI4LmA4Lir4Lih4Liy4Liw4Liq4Lih4LmD4LiZ4Lij4Liw4LiU4Lix4Lia4Lie4Li34LmJ4LiZ4LiQ4Liy4LiZ4LiE4Li34Lit4LiC4LmJ4Lit4LmD4LiUIiwibyI6WyLguKXguJrguITguK3guKXguLHguKHguJnguYzguK3guLLguKLguLjguJfguLTguYnguIfguJfguLHguYnguIfguKvguKHguJTguJfguLjguIHguITguKPguLHguYnguIciLCLguYPguKrguYjguITguYjguLIgMCDguKXguIfguYTguJvguYPguJnguJfguLjguIHguIrguYjguK3guIfguJfguLXguYjguKfguYjguLLguIciLCLguYHguJfguJnguITguYjguLLguKfguYjguLLguIfguJTguYnguKfguKLguITguYjguLLguYDguInguKXguLXguYjguKLguKvguKPguLfguK3guITguYjguLLguKHguLHguJjguKLguJDguLLguJnguILguK3guIfguITguK3guKXguLHguKHguJnguYwgKEltcHV0YXRpb24pIiwi4Lib4Lil4LmI4Lit4Lii4LmE4Lin4LmJ4LmA4LiK4LmI4LiZ4LiZ4Lix4LmJ4LiZIOC5gOC4nuC4o+C4suC4sOC5guC4oeC5gOC4lOC4peC4l+C4uOC4geC4iuC4meC4tOC4lOC4iOC4seC4lOC4geC4suC4o+C5gOC4reC4h+C5hOC4lOC5iSJdLCJhIjoyLCJlIjoi4LiB4Liy4Lij4LmA4LiV4Li04Lih4LiE4LmI4LiyIChJbXB1dGF0aW9uKSDguJTguYnguKfguKLguITguYjguLLguYDguInguKXguLXguYjguKIgKE1lYW4pIOC4q+C4o+C4t+C4reC4oeC4seC4mOC4ouC4kOC4suC4mSAoTWVkaWFuKSDguYDguJvguYfguJnguKfguLTguJjguLXguJ7guLfguYnguJnguJDguLLguJnguJfguLXguYjguKPguLHguIHguKnguLLguIjguLPguJnguKfguJnguILguYnguK3guKHguLnguKXguYTguKfguYnguYTguJTguYkg4Liq4LmI4Lin4LiZ4LiB4Liy4Lij4LmD4Liq4LmIIDAg4LiX4Liz4LmD4Lir4LmJ4LiC4LmJ4Lit4Lih4Li54Lil4Lia4Li04LiU4LmA4Lia4Li34Lit4LiZICjguK3guLLguKLguLggMCDguJvguLXguYTguKHguYjguKrguKHguYDguKvguJXguLjguKrguKHguJzguKUpIOC5geC4peC4sOC4geC4suC4o+C4peC4muC4l+C4seC5ieC4h+C4hOC4reC4peC4seC4oeC4meC5jOC4l+C4s+C5g+C4q+C5ieC5gOC4quC4teC4ouC4guC5ieC4reC4oeC4ueC4peC4quC4s+C4hOC4seC4jeC5guC4lOC4ouC5hOC4oeC5iOC4iOC4s+C5gOC4m+C5h+C4mSJ9LHsiYyI6InByZXAiLCJxIjoi4Lin4Li04LiY4Li1IElRUiDguYPguIrguYnguKPguLDguJrguLjguITguYjguLLguJzguLTguJTguJvguIHguJXguLQgKE91dGxpZXIpIOC5guC4lOC4ouC4luC4t+C4reC4p+C5iOC4suC4hOC5iOC4suC5g+C4lOC5gOC4m+C5h+C4mSBPdXRsaWVyIiwibyI6WyLguITguYjguLLguJfguLXguYjguYDguJfguYjguLLguIHguLHguJrguITguYjguLLguKHguLHguJjguKLguJDguLLguJnguJ7guK3guJTguLUiLCLguITguYjguLLguJfguLXguYjguK3guKLguLnguYjguKPguLDguKvguKfguYjguLLguIcgUTEg4LmB4Lil4LiwIFEzIiwi4LiE4LmI4Liy4LiX4Li14LmI4Lib4Lij4Liy4LiB4LiP4Lia4LmI4Lit4Lii4LiX4Li14LmI4Liq4Li44LiU4LmD4LiZ4LiK4Li44LiU4LiC4LmJ4Lit4Lih4Li54LilIiwi4LiE4LmI4Liy4LiX4Li14LmI4LiZ4LmJ4Lit4Lii4LiB4Lin4LmI4LiyIFExIOKIkiAxLjXDl0lRUiDguKvguKPguLfguK3guKHguLLguIHguIHguKfguYjguLIgUTMgKyAxLjXDl0lRUiJdLCJhIjozLCJlIjoiSVFSID0gUTMg4oiSIFExIOC4hOC5iOC4suC4l+C4teC5iOC4reC4ouC4ueC5iOC4meC4reC4geC4guC4reC4muC5gOC4guC4lSBbUTEg4oiSIDEuNcOXSVFSLCBRMyArIDEuNcOXSVFSXSDguJbguLfguK3guYDguJvguYfguJnguITguYjguLLguJzguLTguJTguJvguIHguJXguLQg4LiL4Li24LmI4LiH4LmA4Lib4LmH4LiZ4Lir4Lil4Lix4LiB4LmA4LiU4Li14Lii4Lin4LiB4Lix4Lia4LiB4Liy4Lij4LmB4Liq4LiU4LiH4LiI4Li44LiU4LiZ4Lit4LiB4Lir4LiZ4Lin4LiU4LmD4LiZIEJveCBwbG90In0seyJjIjoicHJlcCIsInEiOiLguIHguLLguKPguJfguLMgTWluLU1heCBOb3JtYWxpemF0aW9uIOC4iOC4sOC4m+C4o+C4seC4muC4hOC5iOC4suC4guC4reC4h+C4guC5ieC4reC4oeC4ueC4peC5g+C4q+C5ieC4reC4ouC4ueC5iOC5g+C4meC4iuC5iOC4p+C4h+C5g+C4lCIsIm8iOlsiMCDguJbguLbguIcgMSIsIuKIkjEwMCDguJbguLbguIcgMTAwIiwiMSDguJbguLbguIcgMTAiLCLguITguYjguLLguYDguJTguLTguKHguYTguKHguYjguYDguJvguKXguLXguYjguKLguJnguYHguJvguKXguIciXSwiYSI6MCwiZSI6IuC4quC4ueC4leC4oyB4JyA9ICh4IOKIkiBtaW4pIC8gKG1heCDiiJIgbWluKSDguIjguLDguJvguKPguLHguJrguITguYjguLLguYPguKvguYnguK3guKLguLnguYjguYPguJnguIrguYjguKfguIcgMOKAkzEg4LiK4LmI4Lin4Lii4LmD4Lir4LmJ4LiV4Lix4Lin4LmB4Lib4Lij4LiX4Li14LmI4Lih4Li14Lir4LiZ4LmI4Lin4Lii4LiV4LmI4Liy4LiH4LiB4Lix4LiZICjguYDguIrguYjguJkg4Lij4Liy4Lii4LmE4LiU4LmJIOC4q+C4peC4seC4geC4q+C4oeC4t+C5iOC4mSDguIHguLHguJrguK3guLLguKLguLgg4Lir4Lil4Lix4LiB4Liq4Li04LiaKSDguKHguLXguJnguYnguLPguKvguJnguLHguIHguYPguIHguKXguYnguYDguITguLXguKLguIfguIHguLHguJkg4LmA4Lir4Lih4Liy4Liw4LiB4Lix4Lia4Lit4Lix4Lil4LiB4Lit4Lij4Li04LiX4Li24Lih4LiX4Li14LmI4LmD4LiK4LmJ4Lij4Liw4Lii4Liw4LiX4Liy4LiHIOC5gOC4iuC5iOC4mSBLTk4sIEstTWVhbnMifSx7ImMiOiJwcmVwIiwicSI6IuC5gOC4l+C4hOC4meC4tOC4hCBPbmUtSG90IEVuY29kaW5nIOC5g+C4iuC5ieC4quC4s+C4q+C4o+C4seC4muC4h+C4suC4meC5g+C4lCIsIm8iOlsi4Lil4LiU4LiI4Liz4LiZ4Lin4LiZ4LmB4LiW4Lin4LiC4Lit4LiH4LiC4LmJ4Lit4Lih4Li54Lil4LmD4Lir4LmJ4LiZ4LmJ4Lit4Lii4Lil4LiHIiwi4LmB4Lib4Lil4LiH4LiC4LmJ4Lit4Lih4Li54Lil4LmA4LiK4Li04LiH4LiB4Lil4Li44LmI4LihIChDYXRlZ29yaWNhbCkg4LmA4LiK4LmI4LiZIOC4quC4teC5geC4lOC4hy/guYDguILguLXguKLguKcv4LiZ4LmJ4Liz4LmA4LiH4Li04LiZIOC5g+C4q+C5ieC5gOC4m+C5h+C4meC4leC4seC4p+C5geC4m+C4oyAwLzEg4LmB4Lii4LiB4LiE4Lit4Lil4Lix4Lih4LiZ4LmMIiwi4LmA4LiC4LmJ4Liy4Lij4Lir4Lix4Liq4LiC4LmJ4Lit4Lih4Li54Lil4LmA4Lie4Li34LmI4Lit4LiE4Lin4Liy4Lih4Lib4Lil4Lit4LiU4Lig4Lix4Lii4LmE4Lih4LmI4LmD4Lir4LmJ4Lic4Li54LmJ4Lit4Li34LmI4LiZ4Lit4LmI4Liy4LiZ4LmE4LiU4LmJIiwi4LmA4LiV4Li04Lih4LiE4LmI4Liy4Lin4LmI4Liy4LiH4LmD4LiZ4LiC4LmJ4Lit4Lih4Li54Lil4LiV4Lix4Lin4LmA4Lil4LiCIl0sImEiOjEsImUiOiLguYLguKHguYDguJTguKXguKrguYjguKfguJnguYPguKvguI3guYjguKPguLHguJrguYDguInguJ7guLLguLDguJXguLHguKfguYDguKXguIIgT25lLUhvdCBFbmNvZGluZyDguIjguLbguIfguKrguKPguYnguLLguIfguITguK3guKXguLHguKHguJnguYzguYPguKvguKHguYjguJXguLLguKHguIjguLPguJnguKfguJnguIHguKXguLjguYjguKEg4LmB4LiV4LmI4Lil4Liw4LmB4LiW4Lin4Lih4Li14LiE4LmI4LiyIDEg4LmD4LiZ4LiB4Lil4Li44LmI4Lih4LiC4Lit4LiH4LiV4LiZ4LmB4Lil4LiwIDAg4LmD4LiZ4LiB4Lil4Li44LmI4Lih4Lit4Li34LmI4LiZIOC5guC4lOC4ouC5hOC4oeC5iOC4quC4o+C5ieC4suC4h+C4peC4s+C4lOC4seC4muC4oeC4suC4gS3guJnguYnguK3guKLguJfguLXguYjguYTguKHguYjguKHguLXguK3guKLguLnguYjguIjguKPguLTguIfguKPguLDguKvguKfguYjguLLguIfguIHguKXguLjguYjguKEifSx7ImMiOiJzdXAiLCJxIjoi4Lil4Lix4LiB4Lip4LiT4Liw4Liq4Liz4LiE4Lix4LiN4LiC4Lit4LiH4LiB4Liy4Lij4LmA4Lij4Li14Lii4LiZ4Lij4Li54LmJ4LmB4Lia4Lia4Lih4Li14Lic4Li54LmJ4Liq4Lit4LiZIChTdXBlcnZpc2VkIExlYXJuaW5nKSDguITguLfguK3guILguYnguK3guYPguJQiLCJvIjpbIuC4guC5ieC4reC4oeC4ueC4peC5hOC4oeC5iOC4oeC4teC4m+C5ieC4suC4ouC4geC4s+C4geC4seC4miDguYLguKHguYDguJTguKXguJXguYnguK3guIfguITguYnguJnguKvguLLguIHguKXguLjguYjguKHguYDguK3guIciLCLguYLguKHguYDguJTguKXguYDguKPguLXguKLguJnguKPguLnguYnguIjguLLguIHguIHguLLguKPguKXguK3guIfguJzguLTguJTguKXguK3guIfguJbguLnguIHguYHguKXguLDguKPguLHguJrguKPguLLguIfguKfguLHguKUiLCLguYLguKHguYDguJTguKXguYDguKPguLXguKLguJnguKPguLnguYnguIjguLLguIHguILguYnguK3guKHguLnguKXguJfguLXguYjguKHguLXguJvguYnguLLguKLguIHguLPguIHguLHguJogKExhYmVsKSDguKvguKPguLfguK3guITguLPguJXguK3guJrguJfguLXguYjguJbguLnguIHguJXguYnguK3guIfguIHguLPguIHguLHguJrguYTguKfguYkiLCLguYTguKHguYjguJXguYnguK3guIfguYPguIrguYnguILguYnguK3guKHguLnguKXguYPguJnguIHguLLguKPguYDguKPguLXguKLguJnguKPguLnguYnguYDguKXguKIiXSwiYSI6MiwiZSI6IlN1cGVydmlzZWQgTGVhcm5pbmcg4LmD4LiK4LmJ4LiC4LmJ4Lit4Lih4Li54Lil4LiX4Li14LmI4Lih4Li14LiX4Lix4LmJ4LiHIElucHV0IChYKSDguYHguKXguLDguITguLPguJXguK3guJogKHkpIOC5gOC4nuC4t+C5iOC4reC5g+C4q+C5ieC5guC4oeC5gOC4lOC4peC5gOC4o+C4teC4ouC4meC4o+C4ueC5ieC4hOC4p+C4suC4oeC4quC4seC4oeC4nuC4seC4meC4mOC5jOC5geC4peC5ieC4p+C4l+C4s+C4meC4suC4ouC4guC5ieC4reC4oeC4ueC4peC5g+C4q+C4oeC5iCDguJXguLHguKfguYDguKXguLfguK3guIEg4LiBIOC4hOC4t+C4rSBVbnN1cGVydmlzZWQgTGVhcm5pbmcg4LmB4Lil4LiwIOC4giDguITguLfguK0gUmVpbmZvcmNlbWVudCBMZWFybmluZyJ9LHsiYyI6InN1cCIsInEiOiLguJvguLHguI3guKvguLLguYPguJnguILguYnguK3guYPguJTguIjguLHguJTguYDguJvguYfguJnguIfguLLguJkg4oCc4LiB4Liy4Lij4LiW4LiU4LiW4Lit4LiiIChSZWdyZXNzaW9uKeKAnSIsIm8iOlsi4LiX4Liz4LiZ4Liy4Lii4Lij4Liy4LiE4Liy4Lia4LmJ4Liy4LiZ4LiI4Liy4LiB4LiC4LiZ4Liy4LiU4Lie4Li34LmJ4LiZ4LiX4Li14LmIIOC4iOC4s+C4meC4p+C4meC4q+C5ieC4reC4hyDguYHguKXguLDguJfguLPguYDguKXguJfguLXguYjguJXguLHguYnguIciLCLguIjguLPguYHguJnguIHguK3guLXguYDguKHguKXguKfguYjguLLguYDguJvguYfguJnguKrguYHguJvguKHguKvguKPguLfguK3guYTguKHguYjguYPguIrguYjguKrguYHguJvguKEiLCLguYHguJrguYjguIfguIHguKXguLjguYjguKHguKXguLnguIHguITguYnguLLguK3guK3guIHguYDguJvguYfguJkgMyDguIHguKXguLjguYjguKHguJXguLLguKHguJ7guKTguJXguLTguIHguKPguKPguKEiLCLguJfguLPguJnguLLguKLguKfguYjguLLguJnguLHguIHguKjguLbguIHguKnguLLguIjguLDguKrguK3guJrguJzguYjguLLguJnguKvguKPguLfguK3guYTguKHguYjguJzguYjguLLguJkiXSwiYSI6MCwiZSI6IlJlZ3Jlc3Npb24g4LmD4LiK4LmJ4LiX4Liz4LiZ4Liy4Lii4LiE4LmI4Liy4LiX4Li14LmI4LmA4Lib4LmH4LiZ4LiV4Lix4Lin4LmA4Lil4LiC4LiV4LmI4Lit4LmA4LiZ4Li34LmI4Lit4LiHICjguYDguIrguYjguJkg4Lij4Liy4LiE4LiyIOC4reC4uOC4k+C4q+C4oOC4ueC4oeC4tCDguKLguK3guJTguILguLLguKIpIOC4quC5iOC4p+C4meC4geC4suC4o+C4iOC4s+C5geC4meC4geC4quC5geC4m+C4oS/guJzguYjguLLguJkt4LmE4Lih4LmI4Lic4LmI4Liy4LiZIOC5gOC4m+C5h+C4mSBDbGFzc2lmaWNhdGlvbiDguYHguKXguLDguIHguLLguKPguYHguJrguYjguIfguIHguKXguLjguYjguKHguKXguLnguIHguITguYnguLLguYDguJvguYfguJkgQ2x1c3RlcmluZyJ9LHsiYyI6InN1cCIsInEiOiLguK3guLHguKXguIHguK3guKPguLTguJfguLbguKHguYPguJTguJXguYjguK3guYTguJvguJnguLXguYnguJnguLTguKLguKHguYPguIrguYnguKrguLPguKvguKPguLHguJrguIfguLLguJnguIjguLPguYHguJnguIHguJvguKPguLDguYDguKDguJcgKENsYXNzaWZpY2F0aW9uKSIsIm8iOlsiSy1NZWFucyIsIlByaW5jaXBhbCBDb21wb25lbnQgQW5hbHlzaXMgKFBDQSkiLCJBcHJpb3JpIiwiRGVjaXNpb24gVHJlZSJdLCJhIjozLCJlIjoiRGVjaXNpb24gVHJlZSDguKrguKPguYnguLLguIfguIHguI7guYHguJrguJog4oCc4LiW4LmJ4Liy4oCm4LmB4Lil4LmJ4Lin4oCm4oCdIOC4iOC4suC4geC4guC5ieC4reC4oeC4ueC4peC4l+C4teC5iOC4oeC4teC4m+C5ieC4suC4ouC4geC4s+C4geC4seC4miDguYDguJ7guLfguYjguK3guIjguLPguYHguJnguIHguJvguKPguLDguYDguKDguJcg4Liq4LmI4Lin4LiZIEstTWVhbnMg4LmD4LiK4LmJ4LiI4Lix4LiU4LiB4Lil4Li44LmI4LihIFBDQSDguYPguIrguYnguKXguJTguKHguLTguJXguLTguILguYnguK3guKHguLnguKUg4LmB4Lil4LiwIEFwcmlvcmkg4LmD4LiK4LmJ4Lir4Liy4LiB4LiO4LiE4Lin4Liy4Lih4Liq4Lix4Lih4Lie4Lix4LiZ4LiY4LmMIChBc3NvY2lhdGlvbiBSdWxlcykg4LiL4Li24LmI4LiH4Lil4LmJ4Lin4LiZ4LmA4Lib4LmH4LiZIFVuc3VwZXJ2aXNlZCJ9LHsiYyI6InVuc3VwIiwicSI6IuC4reC4seC4peC4geC4reC4o+C4tOC4l+C4tuC4oSBLLU1lYW5zIOC5g+C4iuC5ieC4quC4s+C4q+C4o+C4seC4muC4h+C4suC4meC4m+C4o+C4sOC5gOC4oOC4l+C5g+C4lCIsIm8iOlsi4LiX4Liz4LiZ4Liy4Lii4LiE4LmI4Liy4LiV4Lix4Lin4LmA4Lil4LiC4LiV4LmI4Lit4LmA4LiZ4Li34LmI4Lit4LiHIiwi4LiI4Lix4LiU4LiB4Lil4Li44LmI4Lih4LiC4LmJ4Lit4Lih4Li54LilIChDbHVzdGVyaW5nKSDguK3guK3guIHguYDguJvguYfguJkgSyDguIHguKXguLjguYjguKHguJXguLLguKHguITguKfguLLguKHguITguKXguYnguLLguKLguITguKXguLbguIciLCLguIjguLPguYHguJnguIHguILguYnguK3guITguKfguLLguKHguKfguYjguLLguYDguJvguYfguJnguJrguKfguIHguKvguKPguLfguK3guKXguJoiLCLguJXguKPguKfguIjguKrguK3guJrguITguKfguLLguKHguJbguLnguIHguJXguYnguK3guIfguILguK3guIfguYTguKfguKLguLLguIHguKPguJPguYwiXSwiYSI6MSwiZSI6IkstTWVhbnMg4LmA4Lib4LmH4LiZIFVuc3VwZXJ2aXNlZCBMZWFybmluZyDguJfguLXguYjguYHguJrguYjguIfguILguYnguK3guKHguLnguKXguYDguJvguYfguJkgSyDguIHguKXguLjguYjguKEg4LmC4LiU4Lii4LiB4Liz4Lir4LiZ4LiU4LiI4Li44LiU4Lio4Li54LiZ4Lii4LmM4LiB4Lil4Liy4LiHIChDZW50cm9pZCkg4LmB4Lil4LmJ4Lin4LiI4Lix4LiU4LiC4LmJ4Lit4Lih4Li54Lil4LmB4LiV4LmI4Lil4Liw4LiI4Li44LiU4LmA4LiC4LmJ4Liy4LiB4Lil4Li44LmI4Lih4LiX4Li14LmI4LmD4LiB4Lil4LmJ4LiX4Li14LmI4Liq4Li44LiUIOC5geC4peC4sOC4m+C4o+C4seC4muC4iOC4uOC4lOC4qOC4ueC4meC4ouC5jOC4geC4peC4suC4h+C4i+C5ieC4s+C4iOC4meC4geC4peC4uOC5iOC4oeC4hOC4h+C4l+C4teC5iCJ9LHsiYyI6InVuc3VwIiwicSI6IuC4quC4luC4suC4meC4geC4suC4o+C4k+C5jOC5g+C4lOC5gOC4q+C4oeC4suC4sOC4geC4seC4muC4geC4suC4o+C5g+C4iuC5ieC4geC4suC4o+C5gOC4o+C4teC4ouC4meC4o+C4ueC5ieC5geC4muC4muC5hOC4oeC5iOC4oeC4teC4nOC4ueC5ieC4quC4reC4mSAoVW5zdXBlcnZpc2VkIExlYXJuaW5nKSDguKHguLLguIHguJfguLXguYjguKrguLjguJQiLCJvIjpbIuC4l+C4s+C4meC4suC4ouC4hOC4sOC5geC4meC4meC4quC4reC4muC4iOC4suC4geC4iuC4seC5iOC4p+C5guC4oeC4h+C4geC4suC4o+C4reC5iOC4suC4meC4q+C4meC4seC4h+C4quC4t+C4rSIsIuC4leC4o+C4p+C4iOC4iOC4seC4muC4p+C5iOC4suC4o+C4ueC4m+C4oOC4suC4nuC5gOC4m+C5h+C4meC5geC4oeC4p+C4q+C4o+C4t+C4reC4quC4uOC4meC4seC4giDguYLguJTguKLguKHguLXguKDguLLguJ7guJfguLXguYjguJXguLTguJTguJvguYnguLLguKLguYTguKfguYnguYHguKXguYnguKciLCLguYHguJrguYjguIfguIHguKXguLjguYjguKHguKXguLnguIHguITguYnguLLguJXguLLguKHguJ7guKTguJXguLTguIHguKPguKPguKHguIHguLLguKPguIvguLfguYnguK0g4LmC4LiU4Lii4LmE4Lih4LmI4Lih4Li14LiB4Liy4Lij4LiB4Liz4Lir4LiZ4LiU4LiB4Lil4Li44LmI4Lih4LmE4Lin4LmJ4Lil4LmI4Lin4LiH4Lir4LiZ4LmJ4LiyIChDdXN0b21lciBTZWdtZW50YXRpb24pIiwi4LiX4Liz4LiZ4Liy4Lii4Lij4Liy4LiE4Liy4Lir4Li44LmJ4LiZ4Lin4Lix4LiZ4Lie4Lij4Li44LmI4LiH4LiZ4Li14LmJ4LiI4Liy4LiB4Lij4Liy4LiE4Liy4Lii4LmJ4Lit4LiZ4Lir4Lil4Lix4LiHIl0sImEiOjIsImUiOiLguYDguKHguLfguYjguK3guYTguKHguYjguKHguLXguJvguYnguLLguKLguIHguLPguIHguLHguJogKExhYmVsKSDguYHguKXguLDguJXguYnguK3guIfguIHguLLguKPguITguYnguJnguKvguLLguYLguITguKPguIfguKrguKPguYnguLLguIfguKvguKPguLfguK3guIHguKXguLjguYjguKHguJfguLXguYjguIvguYjguK3guJnguK3guKLguLnguYjguYPguJnguILguYnguK3guKHguLnguKUg4LiI4Li24LiH4LmD4LiK4LmJIFVuc3VwZXJ2aXNlZCBMZWFybmluZyDguYDguIrguYjguJkgQ3VzdG9tZXIgU2VnbWVudGF0aW9uIOC4quC5iOC4p+C4meC4leC4seC4p+C5gOC4peC4t+C4reC4geC4reC4t+C5iOC4meC4oeC4teC4hOC4s+C4leC4reC4muC5g+C4q+C5ieC5gOC4o+C4teC4ouC4meC4o+C4ueC5iSDguIjguLbguIfguYDguJvguYfguJkgU3VwZXJ2aXNlZCBMZWFybmluZyJ9LHsiYyI6Im1ldHJpYyIsInEiOiLguYLguKHguYDguJTguKXguIjguLPguYHguJnguIHguJvguKPguLDguYDguKDguJfguJfguLPguJnguLLguKLguILguYnguK3guKHguLnguKXguJfguJTguKrguK3guJogMjAwIOC4o+C4suC4ouC4geC4suC4oyDguJfguLLguKLguJbguLnguIEgMTcwIOC4o+C4suC4ouC4geC4suC4oyDguITguYjguLLguITguKfguLLguKHguYHguKHguYjguJnguKLguLMgKEFjY3VyYWN5KSDguYDguJfguYjguLLguIHguLHguJrguYDguJfguYjguLLguYPguJQiLCJvIjpbIuC4o+C5ieC4reC4ouC4peC4sCAzMCIsIuC4o+C5ieC4reC4ouC4peC4sCA3MCIsIuC4o+C5ieC4reC4ouC4peC4sCAxNSIsIuC4o+C5ieC4reC4ouC4peC4sCA4NSJdLCJhIjozLCJlIjoiQWNjdXJhY3kgPSDguIjguLPguJnguKfguJnguJfguLXguYjguJfguLPguJnguLLguKLguJbguLnguIEgw7cg4LiI4Liz4LiZ4Lin4LiZ4LiX4Lix4LmJ4LiH4Lir4Lih4LiUID0gMTcwIMO3IDIwMCA9IDAuODUg4Lir4Lij4Li34Lit4Lij4LmJ4Lit4Lii4Lil4LiwIDg1ICjguILguYnguK3guITguKfguKPguKPguLDguKfguLHguIc6IOC5gOC4oeC4t+C5iOC4reC4guC5ieC4reC4oeC4ueC4peC5geC4leC5iOC4peC4sOC4hOC4peC4suC4quC5hOC4oeC5iOC4quC4oeC4lOC4uOC4pSDguITguKfguKPguJTguLkgUHJlY2lzaW9uLCBSZWNhbGwg4Lir4Lij4Li34LitIEYxLXNjb3JlIOC4m+C4o+C4sOC4geC4reC4mikifSx7ImMiOiJtZXRyaWMiLCJxIjoi4LiC4LmJ4Lit4LmD4LiU4Lit4LiY4Li04Lia4Liy4Lii4Lig4Liy4Lin4LiwIOKAnE92ZXJmaXR0aW5n4oCdIOC5hOC4lOC5ieC4luC4ueC4geC4leC5ieC4reC4hyIsIm8iOlsi4LmC4Lih4LmA4LiU4Lil4LiX4Liz4LiH4Liy4LiZ4LmE4LiU4LmJ4LiU4Li14Lih4Liy4LiB4LiB4Lix4Lia4LiC4LmJ4Lit4Lih4Li54Lil4Lid4Li24LiB4Liq4Lit4LiZIChUcmFpbmluZykg4LmB4LiV4LmI4LiX4Liz4LiH4Liy4LiZ4LmE4LiU4LmJ4LmB4Lii4LmI4LiB4Lix4Lia4LiC4LmJ4Lit4Lih4Li54Lil4LiX4LiU4Liq4Lit4LiaIChUZXN0KSDguKvguKPguLfguK3guILguYnguK3guKHguLnguKXguYPguKvguKHguYgiLCLguYLguKHguYDguJTguKXguJfguLPguIfguLLguJnguYTguJTguYnguYHguKLguYjguJfguLHguYnguIfguIHguLHguJrguILguYnguK3guKHguLnguKXguJ3guLbguIHguKrguK3guJnguYHguKXguLDguILguYnguK3guKHguLnguKXguJfguJTguKrguK3guJoiLCLguYLguKHguYDguJTguKXguJfguLPguIfguLLguJnguYTguJTguYnguJTguLXguYDguJfguYjguLLguIHguLHguJnguJfguLHguYnguIfguILguYnguK3guKHguLnguKXguJ3guLbguIHguKrguK3guJnguYHguKXguLDguILguYnguK3guKHguLnguKXguJfguJTguKrguK3guJoiLCLguYLguKHguYDguJTguKXguYPguIrguYnguYDguKfguKXguLLguJ3guLbguIHguKrguK3guJnguJnguYnguK3guKLguYDguIHguLTguJnguYTguJsiXSwiYSI6MCwiZSI6Ik92ZXJmaXR0aW5nIOC4hOC4t+C4reC5guC4oeC5gOC4lOC4peC4iOC4s+C4o+C4suC4ouC4peC4sOC5gOC4reC4teC4ouC4lOC5geC4peC4sOC4quC4seC4jeC4jeC4suC4k+C4o+C4muC4geC4p+C4meC4guC4reC4h+C4guC5ieC4reC4oeC4ueC4peC4neC4tuC4geC4quC4reC4meC4oeC4suC4geC5gOC4geC4tOC4meC5hOC4myDguIjguJnguYTguKHguYjguKrguLLguKHguLLguKPguJbguJfguLPguJnguLLguKLguILguYnguK3guKHguLnguKXguYPguKvguKHguYjguYTguJTguYnguJTguLUgKEdlbmVyYWxpemUg4LmE4Lih4LmI4LmE4LiU4LmJKSDguKrguYjguKfguJnguJXguLHguKfguYDguKXguLfguK3guIEg4LiCIOC4hOC4t+C4rSBVbmRlcmZpdHRpbmcg4LiB4Liy4Lij4LmB4Lia4LmI4LiHIFRyYWluL1Rlc3Qg4LmB4Lil4Liw4LmD4LiK4LmJIENyb3NzLXZhbGlkYXRpb24g4LiK4LmI4Lin4Lii4LiV4Lij4Lin4LiI4LiI4Lix4Lia4Lib4Lix4LiN4Lir4Liy4LiZ4Li14LmJIn1d'))));
+var TOTAL = BANK.length;
+
+/* ================= STATE ================= */
+var S = { started:false, submitted:false, answers:[], startAt:0, endAt:0, tick:null,
+          switches:0, filter:'all', explainAll:false };
+var IS_GAS = (typeof google !== 'undefined' && google.script && google.script.run);
+var $ = function(id){ return document.getElementById(id); };
+
+/* ================= UTIL ================= */
+function esc(s){ return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function fmtClock(sec){ sec=Math.max(0,sec); var m=Math.floor(sec/60), s=sec%60; return (m<10?'0':'')+m+':'+(s<10?'0':'')+s; }
+function fmtDuration(sec){ var m=Math.floor(sec/60), s=sec%60; return (m? m+' นาที ':'')+s+' วินาที'; }
+function fmtDate(d){ return d.toLocaleString('th-TH',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+function uid(){ return 'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function toast(msg){ var t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(function(){t.classList.remove('show');},2800); }
+function modal(o){
+  return new Promise(function(res){
+    $('mIco').textContent=o.icon||'ℹ️'; $('mTitle').textContent=o.title||''; $('mText').textContent=o.text||'';
+    var box=$('mBtns'); box.innerHTML='';
+    (o.buttons||[{label:'ตกลง',cls:'primary',value:true}]).forEach(function(b){
+      var el=document.createElement('button'); el.className='btn '+(b.cls||''); el.textContent=b.label;
+      el.onclick=function(){ $('modalBg').classList.remove('show'); res(b.value); };
+      box.appendChild(el);
+    });
+    $('modalBg').classList.add('show');
+  });
+}
+
+/* ================= STORAGE ================= */
+function loadAll(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY)||'[]'); }catch(e){ return []; } }
+function saveAll(list){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(list)); }catch(e){} }
+function profile(){ return { id:$('sid').value.trim(), first:$('fname').value.trim(), last:$('lname').value.trim() }; }
+function myHistory(){
+  var id=profile().id, all=loadAll();
+  return all.filter(function(r){ return r.quizId===QUIZ_ID && (!id || r.studentId===id); });
+}
+
+/* ================= RENDER ================= */
+function renderFilters(){
+  var counts={all:TOTAL}; BANK.forEach(function(q){ counts[q.c]=(counts[q.c]||0)+1; });
+  var html='<button class="filter active" data-f="all">ทั้งหมด<span class="n">'+TOTAL+'</span></button>';
+  Object.keys(CATS).forEach(function(k){ if(counts[k]) html+='<button class="filter" data-f="'+k+'">'+esc(CATS[k].name)+'<span class="n">'+counts[k]+'</span></button>'; });
+  $('filters').innerHTML=html;
+  $('filters').onclick=function(e){
+    var b=e.target.closest('.filter'); if(!b) return;
+    S.filter=b.getAttribute('data-f');
+    Array.prototype.forEach.call(document.querySelectorAll('.filter'),function(x){x.classList.toggle('active',x===b);});
+    applyFilter();
+  };
+}
+function applyFilter(){
+  BANK.forEach(function(q,i){ $('q'+i).classList.toggle('hidden', S.filter!=='all' && q.c!==S.filter); });
+}
+function renderQuestions(){
+  var html='';
+  BANK.forEach(function(q,i){
+    html+='<article class="q" id="q'+i+'" data-i="'+i+'">'+
+      '<div class="q-head"><span class="q-num">'+(i+1)+'</span><span class="q-cat">'+esc(CATS[q.c].name)+'</span><span class="q-verdict" id="v'+i+'"></span></div>'+
+      '<p class="q-text">'+esc(q.q)+'</p><div class="opts">';
+    q.o.forEach(function(opt,j){
+      html+='<div class="opt" data-q="'+i+'" data-o="'+j+'" role="radio" tabindex="0" aria-checked="false"><span class="mark">'+LETTERS[j]+'</span><span>'+esc(opt)+'</span></div>';
+    });
+    html+='</div><div class="q-tools"><button class="linkbtn" data-ex="'+i+'">แสดง/ซ่อน คำอธิบายข้อนี้</button></div>'+
+      '<div class="explain" id="e'+i+'"><b>เฉลย: '+LETTERS[q.a]+'. '+esc(q.o[q.a])+'</b><br>'+esc(q.e)+'</div></article>';
+  });
+  $('questions').innerHTML=html;
+  $('questions').onclick=function(e){
+    var ex=e.target.closest('[data-ex]');
+    if(ex){ $('e'+ex.getAttribute('data-ex')).classList.toggle('show'); return; }
+    var o=e.target.closest('.opt'); if(o) choose(+o.getAttribute('data-q'), +o.getAttribute('data-o'));
+  };
+  $('questions').onkeydown=function(e){
+    if((e.key==='Enter'||e.key===' ') && e.target.classList.contains('opt')){ e.preventDefault(); e.target.click(); }
+  };
+}
+function choose(qi,oi){
+  if(S.submitted) return;
+  if(!S.started){ toast('กรุณากรอกข้อมูลและกด “เริ่มทำแบบทดสอบ” ก่อน'); return; }
+  S.answers[qi]=oi;
+  Array.prototype.forEach.call($('q'+qi).querySelectorAll('.opt'),function(el,j){
+    el.classList.toggle('selected', j===oi); el.setAttribute('aria-checked', j===oi?'true':'false');
+  });
+  updateProgress();
+}
+function updateProgress(){
+  var n=S.answers.filter(function(a){return a!==null && a!==undefined;}).length;
+  $('progressChip').textContent='ตอบแล้ว '+n+'/'+TOTAL;
+  return n;
+}
+
+/* ================= PROFILE ================= */
+function validateProfile(){
+  var ok=true, p=profile();
+  [['sid',p.id],['fname',p.first],['lname',p.last]].forEach(function(f){
+    var bad=!f[1]; $(f[0]).classList.toggle('invalid',bad); if(bad) ok=false;
+  });
+  if(p.id && !/^[0-9A-Za-z\-]{4,20}$/.test(p.id)){ $('sid').classList.add('invalid'); ok=false;
+    $('profileErr').textContent='รหัสนักศึกษาต้องเป็นตัวเลข/ตัวอักษรภาษาอังกฤษ 4–20 ตัว'; return false; }
+  $('profileErr').textContent= ok ? '' : '⚠️ กรุณากรอก รหัสนักศึกษา ชื่อ และนามสกุล ให้ครบทุกช่อง';
+  return ok;
+}
+['sid','fname','lname'].forEach(function(id){
+  $(id).addEventListener('input',function(){ this.classList.remove('invalid'); if(id==='sid') renderHistory(); });
+});
+
+/* ================= START / TIMER ================= */
+function startQuiz(){
+  if(!validateProfile()){ $('profileCard').scrollIntoView({behavior:'smooth'}); return; }
+  ['sid','fname','lname'].forEach(function(id){ $(id).readOnly=true; });
+  $('startBtn').disabled=true; $('startBtn').textContent='⏳ กำลังทำแบบทดสอบ…';
+  S.started=true; S.submitted=false; S.switches=0; S.explainAll=false;
+  S.answers=new Array(TOTAL).fill(null);
+  S.startAt=Date.now(); S.endAt=S.startAt+TIME_LIMIT*1000;
+  $('quizArea').classList.remove('locked-pre','submitted','locked');
+  $('resultCard').style.display='none';
+  $('tabChip').textContent='🔀 0/'+MAX_SWITCH;
+  updateProgress(); tick();
+  clearInterval(S.tick); S.tick=setInterval(tick,250);
+  setTimeout(function(){ $('quizArea').scrollIntoView({behavior:'smooth'}); },50);
+}
+function remaining(){ return Math.ceil((S.endAt-Date.now())/1000); }
+function tick(){
+  var r=remaining();
+  $('timer').textContent=fmtClock(r);
+  $('timer').classList.toggle('danger', r<=WARN_AT && r>0);
+  if(r<=0 && !S.submitted){
+    clearInterval(S.tick);
+    $('timer').textContent='00:00';
+    grade('timeout');
+  }
+}
+
+/* ================= ANTI-CHEAT ================= */
+document.addEventListener('keydown',function(e){
+  var k=(e.key||'').toLowerCase(), ctrl=e.ctrlKey||e.metaKey;
+  var inInput=e.target && e.target.tagName==='INPUT';
+  if(e.key==='F12' ||
+     (ctrl && e.shiftKey && ['i','j','c','k'].indexOf(k)>-1) ||
+     (ctrl && e.altKey && ['i','j','c','u'].indexOf(k)>-1) ||
+     (ctrl && ['u','s'].indexOf(k)>-1) ||
+     (ctrl && !inInput && ['c','x','a'].indexOf(k)>-1)){
+    e.preventDefault(); e.stopPropagation(); toast('🚫 ปุ่มลัดนี้ถูกปิดใช้งานระหว่างการสอบ'); return false;
+  }
+},true);
+document.addEventListener('contextmenu',function(e){ e.preventDefault(); },true);
+document.addEventListener('selectstart',function(e){ if(!(e.target && e.target.tagName==='INPUT')) e.preventDefault(); });
+document.addEventListener('visibilitychange',function(){
+  if(!S.started || S.submitted) return;
+  if(document.visibilityState==='hidden'){
+    S.switches++;
+    $('tabChip').textContent='🔀 '+S.switches+'/'+MAX_SWITCH;
+    if(S.switches>MAX_SWITCH){ grade('tab'); }
+  } else if(document.visibilityState==='visible' && S.switches<=MAX_SWITCH && S.switches>0){
+    modal({icon:'⚠️',title:'ตรวจพบการสลับหน้าจอ ('+S.switches+'/'+MAX_SWITCH+')',
+      text: S.switches<MAX_SWITCH ? 'กรุณาอยู่ในหน้าแบบทดสอบ หากสลับหน้าจอเกิน '+MAX_SWITCH+' ครั้ง ระบบจะส่งข้อสอบทันที'
+                                   : 'นี่คือการเตือนครั้งสุดท้าย หากสลับหน้าจออีก 1 ครั้ง ระบบจะส่งและตรวจข้อสอบทันที',
+      buttons:[{label:'รับทราบ',cls:'primary',value:true}]});
+  }
+});
+window.addEventListener('beforeunload',function(e){ if(S.started && !S.submitted){ e.preventDefault(); e.returnValue=''; } });
+
+/* ================= GRADE ================= */
+async function gradeClick(){
+  if(S.submitted) return;
+  if(!S.started){ validateProfile(); toast('กรุณากรอกข้อมูลนักศึกษาและกด “เริ่มทำแบบทดสอบ” ก่อน'); $('profileCard').scrollIntoView({behavior:'smooth'}); return; }
+  if(!validateProfile()){ $('profileCard').scrollIntoView({behavior:'smooth'}); return; }
+  var left=TOTAL-updateProgress();
+  var go=await modal({icon:left?'❓':'📨', title:'ยืนยันการส่งคำตอบ',
+    text: left ? 'ยังมีข้อที่ไม่ได้ตอบอีก '+left+' ข้อ ต้องการส่งคำตอบเลยหรือไม่?' : 'ตอบครบทุกข้อแล้ว ต้องการส่งคำตอบและตรวจคะแนนหรือไม่?',
+    buttons:[{label:'กลับไปทำต่อ',cls:'ghost',value:false},{label:'ส่งคำตอบ',cls:'primary',value:true}]});
+  if(go && !S.submitted) grade('manual');
+}
+
+function grade(reason){
+  if(S.submitted) return;
+  S.submitted=true; clearInterval(S.tick);
+  var used=Math.min(TIME_LIMIT, Math.round((Date.now()-S.startAt)/1000));
+  $('timer').classList.remove('danger');
+  $('quizArea').classList.add('locked','submitted');
+  var correct=0, wrong=0, blank=0;
+  BANK.forEach(function(q,i){
+    var a=S.answers[i], card=$('q'+i), v=$('v'+i);
+    var opts=card.querySelectorAll('.opt');
+    opts[q.a].classList.add('is-correct');
+    card.classList.remove('correct','wrong','unanswered');
+    if(a===null||a===undefined){ blank++; card.classList.add('unanswered'); v.textContent='⚪ ไม่ได้ตอบ'; v.style.color='#8a6500'; }
+    else if(a===q.a){ correct++; card.classList.add('correct'); v.textContent='✔ ถูกต้อง'; v.style.color='var(--ok)'; }
+    else { wrong++; opts[a].classList.add('is-wrong'); card.classList.add('wrong'); v.textContent='✘ ผิด'; v.style.color='var(--bad)'; }
+  });
+  var pct=Math.round(correct/TOTAL*10000)/100;
+  var p=profile(), now=new Date();
+  var note = reason==='timeout' ? 'หมดเวลา – ระบบส่งอัตโนมัติ'
+           : reason==='tab' ? 'สลับหน้าจอเกิน '+MAX_SWITCH+' ครั้ง – ระบบส่งอัตโนมัติ'
+           : 'ส่งตามปกติ';
+  if(S.switches>0 && reason!=='tab') note+=' (สลับหน้าจอ '+S.switches+' ครั้ง)';
+  var round=myHistory().reduce(function(m,r){return Math.max(m,r.round||0);},0)+1;
+  var rec={ clientId:uid(), quizId:QUIZ_ID, quizTitle:QUIZ_TITLE, studentId:p.id, firstName:p.first, lastName:p.last,
+    round:round, submittedAtISO:now.toISOString(), submittedAt:fmtDate(now), timeUsedSec:used, timeUsedText:fmtDuration(used),
+    score:correct, total:TOTAL, percent:pct, tabSwitches:S.switches, reason:reason, note:note,
+    answers:S.answers.map(function(a,i){return (i+1)+':'+(a===null?'-':LETTERS[a]);}).join(', '),
+    synced:false };
+  var all=loadAll(); all.push(rec); saveAll(all);
+
+  // แสดงผล
+  var col = pct>=80?'var(--ok)':pct>=50?'var(--accent)':'var(--bad)';
+  $('ring').style.setProperty('--p',pct); $('ring').style.setProperty('--c',col);
+  $('rScore').textContent=correct+'/'+TOTAL; $('rPct').textContent=pct+'%';
+  $('rName').textContent=p.first+' '+p.last; $('rRound').textContent=round;
+  $('rTime').textContent=fmtDuration(used); $('rBreak').textContent=correct+' / '+wrong+' / '+blank;
+  var ev = pct>=80 ? ['🏆 ดีเยี่ยม! เข้าใจแนวคิดพื้นฐานของวิทยาการข้อมูลและวงจรชีวิตของข้อมูลได้เป็นอย่างดี','var(--ok-bg)','var(--ok)']
+         : pct>=70 ? ['👍 ดี มีความเข้าใจในระดับที่ดี ทบทวนข้อที่ผิดเพิ่มเติมเล็กน้อย','#eaf3fb','#24507a']
+         : pct>=50 ? ['📘 พอใช้ ผ่านเกณฑ์ขั้นต่ำ ควรอ่านคำอธิบายเฉลยและทบทวนหัวข้อที่ยังผิด','#fff4d6','#8a6500']
+         : ['📚 ควรปรับปรุง แนะนำให้ทบทวนเนื้อหาและเปิดอ่านเฉลยรายละเอียดก่อนทำแบบทดสอบอีกครั้ง','var(--bad-bg)','var(--bad)'];
+  $('rEval').textContent=ev[0]; $('rEval').style.background=ev[1]; $('rEval').style.color=ev[2];
+  $('rNote').textContent='หมายเหตุ: '+note+' · ส่งเมื่อ '+rec.submittedAt;
+  $('resultCard').style.display='block';
+  $('explainBtn').disabled=false; $('gradeBtn').disabled=true;
+  $('retryBtn').style.display='inline-flex';
+  $('startBtn').textContent='✔ ส่งข้อสอบแล้ว';
+  renderHistory();
+  $('resultCard').scrollIntoView({behavior:'smooth'});
+
+  if(reason==='timeout') modal({icon:'⏰',title:'หมดเวลา!',text:'ครบ 15 นาทีแล้ว ระบบได้ล็อกตัวเลือก ส่งข้อสอบ และตรวจคะแนนให้อัตโนมัติ ได้ '+correct+'/'+TOTAL+' คะแนน ('+pct+'%)'});
+  if(reason==='tab') modal({icon:'🚫',title:'ส่งข้อสอบอัตโนมัติ',text:'ตรวจพบการสลับหน้าจอเกิน '+MAX_SWITCH+' ครั้ง ระบบได้ส่งและตรวจข้อสอบทันที ได้ '+correct+'/'+TOTAL+' คะแนน ('+pct+'%)'});
+
+  syncRecord(rec);
+}
+
+function toggleExplainAll(){
+  S.explainAll=!S.explainAll;
+  BANK.forEach(function(q,i){ $('e'+i).classList.toggle('show',S.explainAll); });
+}
+
+function retry(){
+  BANK.forEach(function(q,i){
+    var c=$('q'+i); c.classList.remove('correct','wrong','unanswered'); $('v'+i).textContent='';
+    $('e'+i).classList.remove('show');
+    Array.prototype.forEach.call(c.querySelectorAll('.opt'),function(o){ o.classList.remove('selected','is-correct','is-wrong'); o.setAttribute('aria-checked','false'); });
+  });
+  $('explainBtn').disabled=true; $('gradeBtn').disabled=false; $('retryBtn').style.display='none';
+  startQuiz();
+}
+
+/* ================= HISTORY ================= */
+function renderHistory(){
+  var list=myHistory().slice().sort(function(a,b){return a.submittedAtISO<b.submittedAtISO?-1:1;});
+  var id=profile().id;
+  $('histCaption').textContent = id ? 'ประวัติของรหัส '+id+' ที่บันทึกในเครื่องนี้ (LocalStorage) · '+list.length+' รอบ'
+                                     : 'ประวัติทั้งหมดที่บันทึกในเครื่องนี้ (LocalStorage) · กรอกรหัสนักศึกษาเพื่อกรองเฉพาะของตนเอง';
+  if(!list.length){ $('histBody').innerHTML='<tr><td colspan="8" class="empty">ยังไม่มีประวัติการทำแบบทดสอบ</td></tr>'; return; }
+  var prev=null;
+  $('histBody').innerHTML=list.map(function(r){
+    var diff = (prev===null || prev.studentId!==r.studentId) ? '' : (r.percent-prev.percent);
+    var trend = diff==='' ? '<span style="color:var(--muted)">–</span>' : diff>0 ? '<span style="color:var(--ok)">▲ '+diff.toFixed(0)+'%</span>' : diff<0 ? '<span style="color:var(--bad)">▼ '+Math.abs(diff).toFixed(0)+'%</span>' : '<span style="color:var(--muted)">= 0%</span>';
+    prev=r;
+    return '<tr><td>'+(id?'':esc(r.studentId)+' · ')+'รอบ '+r.round+'</td><td>'+esc(r.submittedAt)+'</td><td>'+esc(r.timeUsedText)+'</td>'+
+      '<td class="num"><b>'+r.score+'</b>/'+r.total+'</td><td><div style="display:flex;align-items:center;gap:8px"><span class="num">'+r.percent+'%</span><div class="bar"><i style="width:'+r.percent+'%"></i></div></div></td>'+
+      '<td>'+trend+'</td><td>'+esc(r.note)+'</td><td>'+(r.synced?'<span class="badge ok">✔ บันทึกแล้ว</span>':'<span class="badge wait">⏳ รอส่ง</span>')+'</td></tr>';
+  }).join('');
+}
+async function clearHistory(){
+  var id=profile().id;
+  var ok=await modal({icon:'🗑️',title:'ล้างประวัติการสอบ',
+    text:(id?'ลบประวัติของรหัส '+id:'ลบประวัติทั้งหมด')+' ที่เก็บไว้ในเครื่องนี้? (ข้อมูลที่ส่งเข้า Google Sheet แล้วจะไม่ถูกลบ)',
+    buttons:[{label:'ยกเลิก',cls:'ghost',value:false},{label:'ล้างประวัติ',cls:'primary',value:true}]});
+  if(!ok) return;
+  saveAll(loadAll().filter(function(r){ return !(r.quizId===QUIZ_ID && (!id || r.studentId===id)); }));
+  renderHistory(); toast('ล้างประวัติเรียบร้อยแล้ว');
+}
+
+/* ================= EXCEL ================= */
+function exportExcel(){
+  var list=myHistory().slice().sort(function(a,b){return a.submittedAtISO<b.submittedAtISO?-1:1;});
+  if(!list.length){ toast('ยังไม่มีข้อมูลสำหรับออกรายงาน'); return; }
+  var head=['รหัสนักศึกษา','ชื่อ-นามสกุล','รอบที่สอบ','วัน-เวลาที่ส่งข้อสอบ','เวลาที่ใช้ทำ','คะแนนที่ได้','คะแนนเต็ม','คิดเป็นร้อยละ (%)','หมายเหตุ'];
+  var rows=list.map(function(r){ return [r.studentId, r.firstName+' '+r.lastName, r.round, r.submittedAt, r.timeUsedText, r.score, r.total, r.percent, r.note]; });
+  var id=profile().id||'all';
+  var fname='รายงานผลสอบ_DataScience_'+id+'_'+new Date().toISOString().slice(0,10);
+  if(typeof XLSX!=='undefined'){
+    var aoa=[['รายงานผลการทำแบบทดสอบ: '+QUIZ_TITLE],['ออกรายงานเมื่อ '+fmtDate(new Date())],[]].concat([head],rows);
+    var ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols']=[{wch:16},{wch:28},{wch:10},{wch:26},{wch:18},{wch:12},{wch:11},{wch:16},{wch:44}];
+    ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:8}},{s:{r:1,c:0},e:{r:1,c:8}}];
+    var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'ผลการสอบ');
+    XLSX.writeFile(wb, fname+'.xlsx');
+    toast('📊 ดาวน์โหลดรายงาน Excel เรียบร้อย');
+  } else {
+    // สำรอง: กรณีโหลดไลบรารี SheetJS ไม่ได้ (ออฟไลน์) ให้ส่งออกเป็น CSV ที่เปิดด้วย Excel ได้
+    var csv='﻿'+[head].concat(rows).map(function(r){return r.map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');}).join('\r\n');
+    var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+    a.download=fname+'.csv'; document.body.appendChild(a); a.click(); a.remove();
+    toast('ไม่สามารถโหลดไลบรารี Excel ได้ จึงดาวน์โหลดเป็น CSV แทน');
+  }
+}
+
+/* ================= GOOGLE SHEET API ================= */
+function setConn(state, text){
+  $('connDot').className='dot '+state;
+  $('connText').textContent=text||(state==='online'?'Sheet ออนไลน์':state==='offline'?'Sheet ออฟไลน์':'กำลังเชื่อมต่อ…');
+}
+function withTimeout(p, ms){ return Promise.race([p, new Promise(function(_,rej){ setTimeout(function(){rej(new Error('timeout'));},ms); })]); }
+function gasRun(fn, arg){
+  return new Promise(function(res,rej){ google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](arg); });
+}
+function api(action, payload){
+  if(IS_GAS){
+    var fn={ping:'apiPing',save:'apiSave',history:'apiHistory'}[action];
+    return withTimeout(gasRun(fn,payload),20000);
+  }
+  var p;
+  if(action==='save'){
+    p=fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'save',data:payload})});
+  } else {
+    var q='?action='+action+(payload?'&studentId='+encodeURIComponent(payload)+'&quizId='+encodeURIComponent(QUIZ_ID):'')+'&_='+Date.now();
+    p=fetch(API_URL+q,{method:'GET'});
+  }
+  return withTimeout(p.then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }),20000);
+}
+var pinging=false;
+function ping(){
+  if(pinging) return; pinging=true;
+  if(!navigator.onLine){ setConn('offline','ไม่มีอินเทอร์เน็ต'); pinging=false; return; }
+  setConn('loading');
+  api('ping').then(function(r){
+    if(r && r.ok){ setConn('online'); flushQueue(); } else setConn('offline');
+  }).catch(function(){ setConn('offline'); }).then(function(){ pinging=false; });
+}
+function syncRecord(rec){
+  setConn('loading','กำลังบันทึก…');
+  var payload={}; for(var k in rec){ if(k!=='synced') payload[k]=rec[k]; }
+  return api('save',payload).then(function(r){
+    if(!r || !r.ok) throw new Error((r&&r.error)||'save failed');
+    var all=loadAll();
+    all.forEach(function(x){ if(x.clientId===rec.clientId){ x.synced=true; if(r.round) x.round=r.round; } });
+    saveAll(all); setConn('online'); renderHistory();
+    if(r.round){ $('rRound').textContent=r.round; }
+    toast('☁️ บันทึกคะแนนลง Google Sheet เรียบร้อย');
+  }).catch(function(){
+    setConn('offline'); renderHistory();
+    toast('⚠️ ยังบันทึกลง Google Sheet ไม่ได้ ระบบจะลองส่งใหม่อัตโนมัติ');
+  });
+}
+var flushing=false;
+function flushQueue(){
+  if(flushing) return;
+  var pending=loadAll().filter(function(r){return !r.synced && r.quizId===QUIZ_ID;});
+  if(!pending.length) return;
+  flushing=true;
+  pending.reduce(function(chain,r){ return chain.then(function(){ return syncRecord(r); }); }, Promise.resolve())
+    .then(function(){ flushing=false; });
+}
+function loadCloud(){
+  var id=profile().id;
+  if(!id){ $('sid').classList.add('invalid'); toast('กรุณากรอกรหัสนักศึกษาก่อนดึงประวัติ'); return; }
+  $('cloudWrap').style.display='block';
+  $('cloudBody').innerHTML='<tr><td colspan="6" class="empty">⏳ กำลังดึงข้อมูลจาก Google Sheet…</td></tr>';
+  setConn('loading','กำลังดึงข้อมูล…');
+  api('history',id).then(function(r){
+    if(!r || !r.ok) throw new Error('fail');
+    setConn('online');
+    var rows=r.rows||[];
+    $('cloudBody').innerHTML = rows.length ? rows.map(function(x){
+      return '<tr><td>รอบ '+esc(x.round)+'</td><td>'+esc(x.submittedAt)+'</td><td>'+esc(x.timeUsedText)+'</td><td class="num"><b>'+esc(x.score)+'</b>/'+esc(x.total)+'</td><td class="num">'+esc(x.percent)+'%</td><td>'+esc(x.note)+'</td></tr>';
+    }).join('') : '<tr><td colspan="6" class="empty">ไม่พบประวัติของรหัส '+esc(id)+' ใน Google Sheet</td></tr>';
+  }).catch(function(){
+    setConn('offline');
+    $('cloudBody').innerHTML='<tr><td colspan="6" class="empty">❌ เชื่อมต่อ Google Sheet ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</td></tr>';
+  });
+}
+
+/* ================= INIT ================= */
+renderFilters(); renderQuestions(); renderHistory();
+S.answers=new Array(TOTAL).fill(null);
+$('startBtn').onclick=startQuiz;
+$('gradeBtn').onclick=gradeClick;
+$('explainBtn').onclick=toggleExplainAll;
+$('retryBtn').onclick=retry;
+$('printBtn').onclick=$('printBtnTop').onclick=function(){ window.print(); };
+$('excelBtn').onclick=exportExcel;
+$('clearBtn').onclick=clearHistory;
+$('cloudBtn').onclick=loadCloud;
+window.addEventListener('online',ping);
+window.addEventListener('offline',function(){ setConn('offline','ไม่มีอินเทอร์เน็ต'); });
+ping(); setInterval(ping,60000);
+})();
+</script>
+</body>
+</html>
